@@ -19,42 +19,42 @@ pub fn get_course_from_json(x: &Value) -> Option<Course> {
         term_name: x["term"]["name"].as_str()?.to_string(),
     })
 }
-impl Course {
-    pub fn download_files(&self) -> DownloadFolder {
-        DownloadFolder {}
-    }
-}
+// impl Course {
+//     pub fn download_files(&self) -> DownloadFolder {
+//         DownloadFolder {}
+//     }
+// }
 
-pub struct DownloadFile {
-    size: i64,
-    remote_url: String,
-    local_path: String,
-    need_update: bool,
-    local_temp_path: String,
-}
+// pub struct DownloadFile {
+//     size: i64,
+//     remote_url: String,
+//     local_path: String,
+//     need_update: bool,
+//     local_temp_path: String,
+// }
 
-impl DownloadFile {
-    pub fn new(
-        size: i64,
-        remote_url: String,
-        local_path: String,
-        need_update: bool,
-        local_temp_path: String,
-    ) -> Self {
-        Self {
-            size,
-            remote_url,
-            local_path,
-            need_update,
-            local_temp_path,
-        }
-    }
-}
-pub struct DownloadFolder {
-    files: Vec<DownloadFile>,
-    name: String,
-    local_path: String,
-}
-impl DownloadFolder {
-    pub fn new(id: i64) -> Self {}
-}
+// impl DownloadFile {
+//     pub fn new(
+//         size: i64,
+//         remote_url: String,
+//         local_path: String,
+//         need_update: bool,
+//         local_temp_path: String,
+//     ) -> Self {
+//         Self {
+//             size,
+//             remote_url,
+//             local_path,
+//             need_update,
+//             local_temp_path,
+//         }
+//     }
+// }
+// pub struct DownloadFolder {
+//     files: Vec<DownloadFile>,
+//     name: String,
+//     local_path: String,
+// }
+// impl DownloadFolder {
+//     pub fn new(id: i64) -> Self {}
+// }

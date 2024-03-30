@@ -7,7 +7,7 @@ fn main() {
     // println!("Hello, world!");
     let x = RemoteData::new();
     let mycourses=x.get_course_list();
-    for course in mycourses{
-        course.download_files();
-    }
+    // for course in mycourses{
+    //     course.download_files();
+    // }
 }
