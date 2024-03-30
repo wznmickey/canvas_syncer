@@ -10,4 +10,5 @@ Roadmap:
 
 https://github.com/BoYanZh/Canvas-Syncer
 
+Now you need to provide a key in my_key() function.
 An async rust program that synchronizes files and folders across Canvas LMS Files and local. 
