@@ -1,0 +1,13 @@
+Plan to implement Canvas-Syncer in rust to gain higher reability and extension.
+
+
+
+Roadmap:
+1. use blocking to complete basic functions
+2. switch to async
+3. support features(i.e. file filter,detail downloading config)
+4. allow uploading
+
+https://github.com/BoYanZh/Canvas-Syncer
+
+An async rust program that synchronizes files and folders across Canvas LMS Files and local. 
