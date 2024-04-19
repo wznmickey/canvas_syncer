@@ -7,3 +7,5 @@ target/
 **/*.rs.bk
 # for test, store the key temporarily
 my_key.rs
+
+*.json
