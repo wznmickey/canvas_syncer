@@ -84,7 +84,32 @@ impl RemoteData {
         }
         ans
     }
-    // pub fn get_folder_list(self,id:i64)->String{
-
-    // }
+    pub fn get_folder_list(&self,id:i64)->Vec<Folder>{
+        let url = format!("{}/api/v1/courses/{}/folders?",self.url,id);
+        let responses = self.get_remote_resource(url.as_str());
+        let mut ans = Vec::new();
+        for response in responses {
+            let _ = match || -> Option<()> {
+                let result: Value = response.json().ok()?;
+                let result: &Vec<Value> = result.as_array()?;
+                for i in result {
+                    let folder = get_folder_from_json(i);
+                    println!("course={folder:?}");
+                    match folder {
+                        None => continue,
+                        Some(folder) => {
+                            ans.push(folder);
+                        }
+                    }
+                }
+                Some(())
+            }() {
+                Some(_) => {}
+                None => {
+                    break;
+                }
+            };
+        }
+        ans
+    }
 }

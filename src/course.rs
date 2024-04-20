@@ -4,11 +4,11 @@ use serde_json::Value;
 
 #[derive(Debug)]
 pub struct Course {
-    id: i64,
-    name: String,
-    course_code: String,
-    term_id: i64,
-    term_name: String
+    pub id: i64,
+    pub name: String,
+    pub course_code: String,
+    pub term_id: i64,
+    pub term_name: String,
 }
 pub fn get_course_from_json(x: &Value) -> Option<Course> {
     Some(Course {
@@ -21,8 +21,15 @@ pub fn get_course_from_json(x: &Value) -> Option<Course> {
 }
 
 #[derive(Debug)]
-pub struct DownloadFolder {
+pub struct Folder {
+    id: i64,
     name: String,
-    local_path: String,
-    remote_url: String,
+    fullname: String,
+}
+pub fn get_folder_from_json(x: &Value) -> Option<Folder> {
+    Some(Folder {
+        id: x["id"].as_i64()?,
+        name: x["name"].as_str()?.to_string(),
+        fullname: x["full_name"].as_str()?.to_string(),
+    })
 }

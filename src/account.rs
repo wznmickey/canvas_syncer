@@ -5,7 +5,7 @@ pub struct Account {
     config: Config,
     remote_data: RemoteData,
     course: Vec<Course>,
-    downloadfolders: Vec<DownloadFolder>
+    folders: Vec<Folder>
 }
 
 impl Account {
@@ -17,8 +17,12 @@ impl Account {
             config,
             remote_data,
             course,
-            downloadfolders:Vec::new()
+            folders:Vec::new()
         }
     }
-
+    pub fn get_folders(&self) ->()
+    {
+        for course in &self.course{
+        let ans =self.remote_data.get_folder_list(course.id);}
+    }
 }
