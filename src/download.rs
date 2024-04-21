@@ -1,11 +1,10 @@
-use std::io::Read;
-
 use crate::course::*;
 use reqwest::blocking;
 use reqwest::blocking::Response;
 use reqwest::header;
 use reqwest::{self};
 use serde_json::Value;
+use std::rc::Rc;
 pub struct RemoteData {
     client: reqwest::blocking::Client,
     url: String,
@@ -31,13 +30,13 @@ impl RemoteData {
                 let myurl = url.to_string() + "&page=" + page_num.to_string().as_str();
                 let body = self.client.get(myurl).send().ok()?;
                 // println!("{:?}", body.headers().get("link").unwrap());
-                if (body
+                if body
                     .headers()
                     .get("link")
                     .unwrap()
                     .to_str()
                     .unwrap()
-                    .contains("rel=\"next\""))
+                    .contains("rel=\"next\"")
                 {
                     page_num = page_num + 1;
                     ans.push(body);
@@ -56,8 +55,8 @@ impl RemoteData {
 
         ans
     }
-    pub fn get_course_list(&self) -> Vec<Course> {
-        let mut ans: Vec<Course> = Vec::new();
+    pub fn get_course_list(&self) -> Vec<Rc<Course>> {
+        let mut ans = Vec::new();
         let responses = self
             .get_remote_resource(format!("{}/api/v1/courses?include[]=term", self.url).as_str());
         for response in responses {
@@ -66,11 +65,12 @@ impl RemoteData {
                 let result: &Vec<Value> = result.as_array()?;
                 for i in result {
                     let course = get_course_from_json(i);
-                    println!("course={course:?}");
+                    // println!("course={course:?}");
                     match course {
                         None => continue,
                         Some(course) => {
-                            ans.push(course);
+                            let boxed = Rc::new(course);
+                            ans.push(boxed);
                         }
                     }
                 }
@@ -84,8 +84,8 @@ impl RemoteData {
         }
         ans
     }
-    pub fn get_folder_list(&self,id:i64)->Vec<Folder>{
-        let url = format!("{}/api/v1/courses/{}/folders?",self.url,id);
+    pub fn get_folder_list(&self, course: Rc<Course>) -> Vec<Folder> {
+        let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.id);
         let responses = self.get_remote_resource(url.as_str());
         let mut ans = Vec::new();
         for response in responses {
@@ -93,8 +93,8 @@ impl RemoteData {
                 let result: Value = response.json().ok()?;
                 let result: &Vec<Value> = result.as_array()?;
                 for i in result {
-                    let folder = get_folder_from_json(i);
-                    println!("course={folder:?}");
+                    let folder = get_folder_from_json(i, Rc::clone(&course));
+                    // println!("course={folder:?}");
                     match folder {
                         None => continue,
                         Some(folder) => {

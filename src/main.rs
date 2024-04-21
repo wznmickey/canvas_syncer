@@ -5,6 +5,7 @@ mod account;
 
 fn main() {
     
-    let x = account::Account::new("/home/wznmickey/github/canvas_syncer/src/config.json");
+    let mut x = account::Account::new("/home/wznmickey/github/canvas_syncer/src/config.json");
     x.get_folders();
+    x.create_folders();
 }

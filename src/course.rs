@@ -1,7 +1,5 @@
-use crate::download::*;
-use serde_json::Error;
 use serde_json::Value;
-
+use std::rc::Rc;
 #[derive(Debug)]
 pub struct Course {
     pub id: i64,
@@ -23,13 +21,15 @@ pub fn get_course_from_json(x: &Value) -> Option<Course> {
 #[derive(Debug)]
 pub struct Folder {
     id: i64,
-    name: String,
-    fullname: String,
+    pub name: String,
+    pub fullname: String,
+    pub course: Rc<Course>
 }
-pub fn get_folder_from_json(x: &Value) -> Option<Folder> {
+pub fn get_folder_from_json (x: &Value, c:Rc<Course>) -> Option<Folder> {
     Some(Folder {
         id: x["id"].as_i64()?,
         name: x["name"].as_str()?.to_string(),
         fullname: x["full_name"].as_str()?.to_string(),
+        course:c
     })
 }
