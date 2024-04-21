@@ -4,6 +4,7 @@ use reqwest::blocking::Response;
 use reqwest::header;
 use reqwest::{self};
 use serde_json::Value;
+use std::path::PathBuf;
 use std::rc::Rc;
 pub struct RemoteData {
     client: reqwest::blocking::Client,
@@ -69,8 +70,8 @@ impl RemoteData {
                     match course {
                         None => continue,
                         Some(course) => {
-                            let boxed = Rc::new(course);
-                            ans.push(boxed);
+                            let rc = Rc::new(course);
+                            ans.push(rc);
                         }
                     }
                 }
@@ -84,7 +85,7 @@ impl RemoteData {
         }
         ans
     }
-    pub fn get_folder_list(&self, course: Rc<Course>) -> Vec<Folder> {
+    pub fn get_folder_list(&self, course: Rc<Course>) -> Vec<Rc<Folder>> {
         let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.id);
         let responses = self.get_remote_resource(url.as_str());
         let mut ans = Vec::new();
@@ -94,11 +95,44 @@ impl RemoteData {
                 let result: &Vec<Value> = result.as_array()?;
                 for i in result {
                     let folder = get_folder_from_json(i, Rc::clone(&course));
-                    // println!("course={folder:?}");
+                    // println!("folder={folder:?}");
                     match folder {
                         None => continue,
                         Some(folder) => {
-                            ans.push(folder);
+                            let rc = Rc::new(folder);
+                            ans.push(rc);
+                        }
+                    }
+                }
+                Some(())
+            }() {
+                Some(_) => {}
+                None => {
+                    break;
+                }
+            };
+        }
+        ans
+    }
+
+
+    pub fn get_file_list(&self, folder: Rc<Folder>,path:PathBuf) -> Vec<Rc<File>> {
+        let url = folder.filelink.as_str();
+        // println!("{url}");
+        let responses = self.get_remote_resource(url);
+        let mut ans = Vec::new();
+        for response in responses {
+            let _ = match || -> Option<()> {
+                let result: Value = response.json().ok()?;
+                let result: &Vec<Value> = result.as_array()?;
+                for i in result {
+                    let file = get_file_from_json(i, Rc::clone(&folder),path.clone());
+                    // println!("file={file:?}");
+                    match file {
+                        None => continue,
+                        Some(file) => {
+                            let rc = Rc::new(file);
+                            ans.push(rc);
                         }
                     }
                 }
