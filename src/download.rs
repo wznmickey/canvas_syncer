@@ -1,10 +1,12 @@
 use crate::course::*;
-use reqwest::blocking;
+use reqwest::{blocking, Client};
 use reqwest::blocking::Response;
 use reqwest::header;
 use reqwest::{self};
 use serde_json::Value;
-use std::path::PathBuf;
+use std::fs;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 pub struct RemoteData {
     client: reqwest::blocking::Client,
@@ -145,5 +147,19 @@ impl RemoteData {
             };
         }
         ans
+    }
+
+    pub fn download_file(&self,path:&Path,url:&str)->()
+    {
+        let file = std::fs::File::create(path);
+        match file {
+            Ok(mut file) => {
+                let temp = self.client.get(url).send().ok().unwrap();
+                file.write( &temp.bytes().ok().unwrap());
+            }
+            Err(e) => {
+                println!("{e}");
+            }
+        }
     }
 }

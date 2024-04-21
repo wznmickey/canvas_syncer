@@ -9,4 +9,6 @@ fn main() {
     x.create_folders();
     x.get_files();
     x.calculate_files();
+    // x.download_one_file();
+    x.download_files();
 }
