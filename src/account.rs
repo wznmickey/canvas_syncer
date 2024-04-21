@@ -30,7 +30,7 @@ impl Account{
     }
     pub fn create_folders(&self) -> () {
         for folder in &self.folders {
-            create_dir_all(self.config.local_place.clone() + "/" +&folder.course.name + "/"+ &folder.fullname).unwrap();
+            create_dir_all(self.config.local_place.clone() + "/" +&folder.course.name + " "+ &folder.fullname).unwrap();
         }
     }
 }
