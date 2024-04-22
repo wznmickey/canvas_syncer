@@ -3,7 +3,6 @@ mod config;
 mod course;
 mod download;
 use clap::Parser;
-use dialoguer::{theme::ColorfulTheme, Confirm};
 use std::fs;
 /// Syncer of Canvas
 #[derive(Parser, Debug)]
@@ -32,7 +31,7 @@ fn main() {
             x = account::Account::new("./config.json");
         }
     }
-    
+
     println!("Get folders list from canvas...");
     x.get_folders();
     println!("Create folders...");
@@ -40,15 +39,6 @@ fn main() {
     println!("Get files list from canvas...");
     x.get_files();
     x.calculate_files();
-    // x.download_one_file();
-    if Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt("Do you want to download?")
-        .interact()
-        .unwrap()
-    {
-        println!("Download files...");
-        x.download_files();
-    } else {
-        println!("Do not download");
-    }
+    x.download_files();
+    x.update_files();
 }

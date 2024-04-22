@@ -8,6 +8,7 @@ use serde_json::Value;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+
 pub struct RemoteData {
     client: reqwest::blocking::Client,
     url: String,
@@ -117,8 +118,7 @@ impl RemoteData {
         ans
     }
 
-
-    pub fn get_file_list(&self, folder: Rc<Folder>,path:PathBuf) -> Vec<Rc<File>> {
+    pub fn get_file_list(&self, folder: Rc<Folder>, path: PathBuf) -> Vec<Rc<File>> {
         let url = folder.filelink.as_str();
         // println!("{url}");
         let responses = self.get_remote_resource(url);
@@ -128,7 +128,7 @@ impl RemoteData {
                 let result: Value = response.json().ok()?;
                 let result: &Vec<Value> = result.as_array()?;
                 for i in result {
-                    let file = get_file_from_json(i, Rc::clone(&folder),path.clone());
+                    let file = get_file_from_json(i, Rc::clone(&folder), path.clone());
                     // println!("file={file:?}");
                     match file {
                         None => continue,
@@ -149,17 +149,24 @@ impl RemoteData {
         ans
     }
 
-    pub fn download_file(&self,path:&Path,url:&str)->()
-    {
+    pub fn download_file(&self, path: &Path, url: &str) -> () {
         let file = std::fs::File::create(path);
-        match file {
-            Ok(mut file) => {
-                let temp = self.client.get(url).send().ok().unwrap();
-                file.write( &temp.bytes().ok().unwrap()).unwrap();
+        let _ = match || -> Result<(), Box<dyn std::error::Error>> {
+            match file {
+                Ok(mut file) => {
+                    let temp = self.client.get(url).send()?;
+                    file.write(&temp.bytes()?)?;
+                }
+                Err(e) => {
+                    println!("{e}");
+                }
             }
+            Ok(())
+        }() {
+            Ok(_) => {}
             Err(e) => {
                 println!("{e}");
             }
-        }
+        };
     }
 }

@@ -1,10 +1,13 @@
 use crate::config::*;
 use crate::course::*;
 use crate::download::*;
+use dialoguer::{theme::ColorfulTheme, Confirm};
+use indicatif::ProgressBar;
+use std::fs;
 use std::fs::*;
 use std::rc::Rc;
 
-use indicatif::ProgressBar;
+use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Account {
     config: Config,
     remote_data: RemoteData,
@@ -13,6 +16,8 @@ pub struct Account {
     files: Vec<Rc<crate::course::File>>,
     need_update_files: Vec<Rc<crate::course::File>>,
     need_download_files: Vec<Rc<crate::course::File>>,
+    download_size: u64,
+    update_size: u64,
 }
 
 impl Account {
@@ -29,6 +34,8 @@ impl Account {
             files: Vec::new(),
             need_download_files: Vec::new(),
             need_update_files: Vec::new(),
+            download_size: 0,
+            update_size: 0,
         }
     }
     pub fn get_folders(&mut self) -> () {
@@ -67,46 +74,79 @@ impl Account {
         pb.finish_with_message("done");
     }
     pub fn calculate_files(&mut self) -> () {
-        let mut update_size = 0;
-        let mut download_size = 0;
         for file in &self.files {
             let temp = file.get_status();
             match temp {
                 FileStatus::NeedUpdate => {
                     self.need_update_files.push(Rc::clone(file));
-                    update_size += file.size;
+                    self.update_size += file.size;
                 }
                 FileStatus::NotExist => {
                     self.need_download_files.push(Rc::clone(file));
-                    download_size += file.size;
+                    self.download_size += file.size;
                 }
                 FileStatus::Latest => {}
             }
         }
-        println!("update size: {}", update_size);
+    }
+    pub fn download_files(&self) -> () {
+        
+        for file in &self.need_download_files {
+            println!("{:?}", file.my_full_path);
+        }
+        println!("download size: {}", self.download_size);
+        if Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Do you want to download?")
+            .interact()
+            .unwrap()
+        {
+            println!("Download files...");
+            let pb = ProgressBar::new(self.need_download_files.len() as u64);
+            for file in &self.need_download_files {
+                println!("start downloading : {:?}", file.my_full_path);
+                self.remote_data
+                    .download_file(&file.my_full_path, file.url.as_str());
+                println!("finished: {:?}", file.my_full_path);
+                pb.inc(1);
+            }
+            pb.finish_with_message("done");
+        } else {
+            println!("Do not download");
+        }
+    }
+    pub fn update_files(&self) -> () {
+        
         for file in &self.need_update_files {
             println!("{:?}", file.my_full_path);
         }
-        println!("download size: {}", download_size);
-        for file in &self.need_download_files {
-            println!("{:?}", file.my_full_path);
+        println!("update size: {}", self.update_size);
+        if Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Do you want to update?")
+            .interact()
+            .unwrap()
+        {
+            println!("Update files...");
+            let pb = ProgressBar::new(self.need_update_files.len() as u64);
+            for file in &self.need_update_files {
+                println!("start updating : {:?}", file.my_full_path);
+                let x = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+                    .to_string();
+                let mut my_full_path_old = file.my_full_path.clone();
+                my_full_path_old.pop();
+                my_full_path_old
+                    .push(x + "_" + file.my_full_path.file_name().unwrap().to_str().unwrap());
+                fs::copy(&file.my_full_path, my_full_path_old);
+                self.remote_data
+                    .download_file(&file.my_full_path, file.url.as_str());
+                println!("finished: {:?}", file.my_full_path);
+                pb.inc(1);
+            }
+            pb.finish_with_message("done");
+        } else {
+            println!("Do not update");
         }
-    }
-    // pub fn download_one_file(&self) -> () {
-    //     let temp = self.need_download_files.get(0).unwrap();
-    //     println!("download 1: {:?}", temp.my_full_path);
-    //     self.remote_data
-    //         .download_file(&temp.my_full_path, temp.url.as_str());
-    // }
-    pub fn download_files(&self) -> () {
-        let pb = ProgressBar::new(self.need_download_files.len() as u64);
-        for file in &self.need_download_files {
-            println!("start downloading : {:?}", file.my_full_path);
-            self.remote_data
-                .download_file(&file.my_full_path, file.url.as_str());
-            println!("finished: {:?}", file.my_full_path);
-            pb.inc(1);
-        }
-        pb.finish_with_message("done");
     }
 }
