@@ -9,3 +9,5 @@ target/
 my_key.rs
 
 *.json
+
+testFolder/
