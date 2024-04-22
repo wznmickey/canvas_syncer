@@ -2,11 +2,12 @@ use crate::config::*;
 use crate::course::*;
 use crate::download::*;
 use dialoguer::{theme::ColorfulTheme, Confirm};
-use indicatif::ProgressBar;
+use futures::future::join_all;
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+use std::fmt::Write;
 use std::fs;
 use std::fs::*;
 use std::rc::Rc;
-
 use std::time::{SystemTime, UNIX_EPOCH};
 pub struct Account {
     config: Config,
@@ -90,7 +91,10 @@ impl Account {
         }
     }
     pub fn download_files(&self) -> () {
-        
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let msg = rt.block_on(self.download_files_help());
+    }
+    pub async fn download_files_help(&self) -> () {
         for file in &self.need_download_files {
             println!("{:?}", file.my_full_path);
         }
@@ -101,13 +105,18 @@ impl Account {
             .unwrap()
         {
             println!("Download files...");
-            let pb = ProgressBar::new(self.need_download_files.len() as u64);
+            let pb = ProgressBar::new(self.download_size);
+            pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .unwrap()
+            .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+            .progress_chars("#>-"));
             for file in &self.need_download_files {
-                println!("start downloading : {:?}", file.my_full_path);
+                // println!("start downloading : {:?}", file.my_full_path);
                 self.remote_data
-                    .download_file(&file.my_full_path, file.url.as_str());
-                println!("finished: {:?}", file.my_full_path);
-                pb.inc(1);
+                    .download_file(&file.my_full_path, file.url.as_str())
+                    .await;
+                // println!("finished: {:?}", file.my_full_path);
+                pb.inc(file.size);
             }
             pb.finish_with_message("done");
         } else {
@@ -115,7 +124,10 @@ impl Account {
         }
     }
     pub fn update_files(&self) -> () {
-        
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let msg = rt.block_on(self.update_files_help());
+    }
+    pub async fn update_files_help(&self) -> () {
         for file in &self.need_update_files {
             println!("{:?}", file.my_full_path);
         }
@@ -126,9 +138,13 @@ impl Account {
             .unwrap()
         {
             println!("Update files...");
-            let pb = ProgressBar::new(self.need_update_files.len() as u64);
-            for file in &self.need_update_files {
-                println!("start updating : {:?}", file.my_full_path);
+            let pb = ProgressBar::new(self.update_size);
+            pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .unwrap()
+            .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+            .progress_chars("#>-"));
+            let result = join_all(self.need_update_files.iter().map(|file| async {
+                // println!("start updating : {:?}", file.my_full_path);
                 let x = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
@@ -140,10 +156,14 @@ impl Account {
                     .push(x + "_" + file.my_full_path.file_name().unwrap().to_str().unwrap());
                 fs::copy(&file.my_full_path, my_full_path_old);
                 self.remote_data
-                    .download_file(&file.my_full_path, file.url.as_str());
-                println!("finished: {:?}", file.my_full_path);
-                pb.inc(1);
-            }
+                    .download_file(&file.my_full_path, file.url.as_str())
+                    .await;
+                // println!("finished: {:?}", file.my_full_path);
+                pb.inc(file.size);
+            }));
+            // for file in &self.need_update_files {
+
+            // }
             pb.finish_with_message("done");
         } else {
             println!("Do not update");

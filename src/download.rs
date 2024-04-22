@@ -2,6 +2,7 @@ use crate::course::*;
 use reqwest::blocking;
 use reqwest::blocking::Response;
 use reqwest::header;
+use reqwest::*;
 use reqwest::{self};
 use serde_json::Value;
 // use std::fs;
@@ -12,6 +13,7 @@ use std::rc::Rc;
 pub struct RemoteData {
     client: reqwest::blocking::Client,
     url: String,
+    async_client: reqwest::Client,
 }
 
 impl RemoteData {
@@ -20,10 +22,14 @@ impl RemoteData {
         header.insert("Authorization", header::HeaderValue::from_str(key).unwrap());
         Self {
             client: blocking::ClientBuilder::new()
-                .default_headers(header)
+                .default_headers(header.clone())
                 .build()
                 .unwrap(),
             url: url.to_string(),
+            async_client: reqwest::ClientBuilder::new()
+                .default_headers(header)
+                .build()
+                .unwrap(),
         }
     }
     fn get_remote_resource(&self, url: &str) -> Vec<Response> {
@@ -149,24 +155,35 @@ impl RemoteData {
         ans
     }
 
-    pub fn download_file(&self, path: &Path, url: &str) -> () {
-        let file = std::fs::File::create(path);
-        let _ = match || -> Result<(), Box<dyn std::error::Error>> {
-            match file {
-                Ok(mut file) => {
-                    let temp = self.client.get(url).send()?;
-                    file.write(&temp.bytes()?)?;
-                }
-                Err(e) => {
-                    println!("{e}");
-                }
+    pub async fn download_file(&self, path: &Path, url: &str) -> () {
+        let temp = self.async_client.get(url).send().await;
+        match temp {
+            Ok(temp) => {
+                let temp = &temp.bytes().await;
+                match temp {
+                    Ok(temp) => {
+                        let temp_file = std::fs::File::create(path);
+                        let mut file: std::fs::File;
+                        match temp_file {
+                            Err(e) => {
+                                println!("{e}");
+                                return;
+                            }
+                            Ok(temp) => file = temp,
+                        };
+                        match file.write(temp) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                println!("{e}");
+                            }
+                        };
+                    }
+                    Err(e) => {
+                        println!("{e}")
+                    }
+                };
             }
-            Ok(())
-        }() {
-            Ok(_) => {}
-            Err(e) => {
-                println!("{e}");
-            }
-        };
+            Err(e) => println!("{e}"),
+        }
     }
 }
