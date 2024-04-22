@@ -1,13 +1,11 @@
 Plan to implement Canvas-Syncer in rust to gain higher reability and extension.
 
-Current Version: 0.1.0
+Current Version: 0.2.0
 
-Now support: download files and folders from canvas to local.
-Not supported: update files.
 
 Roadmap:
-1. use blocking to complete basic functions
-2. switch to async
+1. use blocking to complete basic functions (finished)
+2. switch to async (partly finished)
 3. support features(i.e. file filter,detail downloading config)
 4. allow uploading
 
