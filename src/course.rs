@@ -1,14 +1,8 @@
 use chrono::DateTime;
 use chrono::Utc;
-use futures::future::Remote;
 use serde_json::Value;
 use std::cmp::max;
-use std::os::unix::fs::MetadataExt;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{fs, path::PathBuf, rc::Rc};
 pub enum FileStatus {
     Latest,
     NeedUpdate,
@@ -111,7 +105,7 @@ impl File {
                 }
                 let local_size = y.len();
                 let remote_size = self.size;
-                if (local_size != remote_size) {
+                if local_size != remote_size {
                     return FileStatus::NeedUpdate;
                 }
                 FileStatus::Latest

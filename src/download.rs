@@ -1,11 +1,11 @@
 use crate::course::*;
-use reqwest::{blocking, Client};
+use reqwest::blocking;
 use reqwest::blocking::Response;
 use reqwest::header;
 use reqwest::{self};
 use serde_json::Value;
-use std::fs;
-use std::io::{Read, Write};
+// use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 pub struct RemoteData {
@@ -155,7 +155,7 @@ impl RemoteData {
         match file {
             Ok(mut file) => {
                 let temp = self.client.get(url).send().ok().unwrap();
-                file.write( &temp.bytes().ok().unwrap());
+                file.write( &temp.bytes().ok().unwrap()).unwrap();
             }
             Err(e) => {
                 println!("{e}");

@@ -18,6 +18,7 @@ pub struct Account {
 impl Account {
     pub fn new(st: &str) -> Self {
         let config = Config::read_file(st);
+        config.print();
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
         let course: Vec<Rc<Course>> = remote_data.get_course_list();
         Account {
@@ -91,12 +92,12 @@ impl Account {
             println!("{:?}", file.my_full_path);
         }
     }
-    pub fn download_one_file(&self) -> () {
-        let temp = self.need_download_files.get(0).unwrap();
-        println!("download 1: {:?}", temp.my_full_path);
-        self.remote_data
-            .download_file(&temp.my_full_path, temp.url.as_str());
-    }
+    // pub fn download_one_file(&self) -> () {
+    //     let temp = self.need_download_files.get(0).unwrap();
+    //     println!("download 1: {:?}", temp.my_full_path);
+    //     self.remote_data
+    //         .download_file(&temp.my_full_path, temp.url.as_str());
+    // }
     pub fn download_files(&self) -> () {
         let pb = ProgressBar::new(self.need_download_files.len() as u64);
         for file in &self.need_download_files {

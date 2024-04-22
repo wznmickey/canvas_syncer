@@ -14,7 +14,7 @@ struct Args {
     config: Option<String>,
 }
 
-fn initConfig() {
+fn init_config() {
     let config = config::Config::new();
     config.save("./config.json");
 }
@@ -28,10 +28,11 @@ fn main() {
         if fs::metadata("./config.json").is_ok() {
             x = account::Account::new("./config.json");
         } else {
-            initConfig();
+            init_config();
             x = account::Account::new("./config.json");
         }
     }
+    
     println!("Get folders list from canvas...");
     x.get_folders();
     println!("Create folders...");
