@@ -8,6 +8,11 @@ pub enum FileStatus {
     NeedUpdate,
     NotExist,
 }
+
+pub trait GetFromJson <T,A,B>{
+    fn get_from_json(x: &Value,a:A,b:B) -> Option<T>;
+}
+
 #[derive(Debug)]
 pub struct Course {
     pub id: i64,
@@ -16,14 +21,16 @@ pub struct Course {
     pub term_id: i64,
     pub term_name: String,
 }
-pub fn get_course_from_json(x: &Value) -> Option<Course> {
-    Some(Course {
-        id: x["id"].as_i64()?,
-        name: x["name"].as_str()?.to_string(),
-        course_code: x["course_code"].as_str()?.to_string(),
-        term_id: x["enrollment_term_id"].as_i64()?,
-        term_name: x["term"]["name"].as_str()?.to_string(),
-    })
+impl GetFromJson <Course,i32,i32> for Course {
+    fn get_from_json(x: &Value,_:i32,_:i32) -> Option<Course> {
+        Some(Course {
+            id: x["id"].as_i64()?,
+            name: x["name"].as_str()?.to_string(),
+            course_code: x["course_code"].as_str()?.to_string(),
+            term_id: x["enrollment_term_id"].as_i64()?,
+            term_name: x["term"]["name"].as_str()?.to_string(),
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -34,18 +41,20 @@ pub struct Folder {
     pub course: Rc<Course>,
     pub filelink: String,
 }
-pub fn get_folder_from_json(x: &Value, c: Rc<Course>) -> Option<Folder> {
-    Some(Folder {
-        id: x["id"].as_i64()?,
-        name: x["name"].as_str()?.to_string(),
-        fullname: x["full_name"].as_str()?.to_string(),
-        course: c,
-        filelink: x["files_url"].as_str()?.to_string() + "?",
-    })
+impl GetFromJson<Folder,Rc<Course>,i32> for Folder {
+    fn get_from_json(x: &Value, c: Rc<Course>,_:i32) -> Option<Folder> {
+        Some(Folder {
+            id: x["id"].as_i64()?,
+            name: x["name"].as_str()?.to_string(),
+            fullname: x["full_name"].as_str()?.to_string(),
+            course: c,
+            filelink: x["files_url"].as_str()?.to_string() + "?",
+        })
+    }
 }
 
 #[derive(Debug)]
-pub struct File {
+pub struct CourseFile {
     id: i64,
     pub display_name: String,
     pub filename: String,
@@ -56,37 +65,36 @@ pub struct File {
     pub created_time: DateTime<Utc>,
     pub updated_time: DateTime<Utc>,
     pub modified_time: DateTime<Utc>,
-    pub my_full_path: PathBuf,
+    pub my_parent_path: PathBuf,
 }
-pub fn get_file_from_json(x: &Value, f: Rc<Folder>, mut path: PathBuf) -> Option<File> {
-    let temp = x["display_name"].as_str()?.to_string();
-    Some(File {
-        id: x["id"].as_i64()?,
-        my_full_path: {
-            path.push((&f.course.name).to_string() + " " + &f.fullname);
-            path.push(&temp);
-            path
-        },
-        display_name: temp,
-        filename: x["filename"].as_str()?.to_string(),
-        folder: f,
-        url: x["url"].as_str()?.to_string(),
-        content_type: x["content-type"].as_str()?.to_string(),
-        size: x["size"].as_u64()?,
-        created_time: DateTime::parse_from_str(x["created_at"].as_str()?, "%+")
-            .ok()?
-            .to_utc(),
-        updated_time: DateTime::parse_from_str(x["updated_at"].as_str()?, "%+")
-            .ok()?
-            .to_utc(),
-        modified_time: DateTime::parse_from_str(x["modified_at"].as_str()?, "%+")
-            .ok()?
-            .to_utc(),
-    })
+impl GetFromJson<CourseFile,Rc<Folder>,PathBuf> for CourseFile {
+    fn get_from_json(x: &Value, f: Rc<Folder>, path: PathBuf) -> Option<CourseFile> {
+        let temp = x["display_name"].as_str()?.to_string();
+        Some(CourseFile {
+            id: x["id"].as_i64()?,
+            my_parent_path: { path.join((&f.course.name).to_string() + " " + &f.fullname) },
+            display_name: temp,
+            filename: x["filename"].as_str()?.to_string(),
+            folder: f,
+            url: x["url"].as_str()?.to_string(),
+            content_type: x["content-type"].as_str()?.to_string(),
+            size: x["size"].as_u64()?,
+            created_time: DateTime::parse_from_str(x["created_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+            updated_time: DateTime::parse_from_str(x["updated_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+            modified_time: DateTime::parse_from_str(x["modified_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+        })
+    }
 }
-impl File {
+impl CourseFile {
     pub fn get_status(&self) -> FileStatus {
-        let x = fs::metadata(self.my_full_path.clone());
+        let x: Result<fs::Metadata, std::io::Error> =
+            fs::metadata(self.my_parent_path.join(&self.display_name));
         match x {
             Ok(y) => {
                 let mod_time = chrono::DateTime::<Utc>::from(y.modified().unwrap());
@@ -101,11 +109,13 @@ impl File {
                     self.updated_time,
                 );
                 if newest_local_time < newest_remote_time {
+                    // println!("a");
                     return FileStatus::NeedUpdate;
                 }
                 let local_size = y.len();
                 let remote_size = self.size;
                 if local_size != remote_size {
+                    // println!("{}: {} {}", self.display_name,local_size, remote_size);
                     return FileStatus::NeedUpdate;
                 }
                 FileStatus::Latest

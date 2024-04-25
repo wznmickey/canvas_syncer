@@ -1,16 +1,22 @@
 use crate::course::*;
-use reqwest::blocking;
-use reqwest::blocking::Response;
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use reqwest::header;
+use reqwest::Response;
 use serde_json::Value;
+use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-
+use std::sync::Arc;
+use tokio::fs::File;
+use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::sync::Semaphore;
+use tokio::task::yield_now;
+use tokio::time::{sleep, Duration};
 pub struct RemoteData {
-    client: reqwest::blocking::Client,
     url: String,
     async_client: reqwest::Client,
+    sem: Arc<Semaphore>,
 }
 
 impl RemoteData {
@@ -18,169 +24,183 @@ impl RemoteData {
         let mut header = header::HeaderMap::new();
         header.insert("Authorization", header::HeaderValue::from_str(key).unwrap());
         Self {
-            client: blocking::ClientBuilder::new()
-                .default_headers(header.clone())
-                .build()
-                .unwrap(),
             url: url.to_string(),
             async_client: reqwest::ClientBuilder::new()
                 .default_headers(header)
                 .build()
                 .unwrap(),
+            // according to https://community.canvaslms.com/t5/Canvas-Developers-Group/API-Rate-Limiting/ba-p/255845 , it should be 700. But my test gives me 600. Maybe my canvas has a different setting.
+            // https://canvas.instructure.com/doc/api/file.throttling.html
+            sem: Arc::new(Semaphore::new(600)),
         }
     }
-    fn get_remote_resource(&self, url: &str) -> Vec<Response> {
+    async fn get_remote_resource(&self, url: &str) -> Vec<Response> {
         let mut page_num = 1;
         let mut ans = Vec::new();
         loop {
-            let _ = match || -> Option<()> {
-                let myurl = url.to_string() + "&page=" + page_num.to_string().as_str();
-                let body = self.client.get(myurl).send().ok()?;
-                // println!("{:?}", body.headers().get("link").unwrap());
-                if body
-                    .headers()
-                    .get("link")
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .contains("rel=\"next\"")
-                {
-                    page_num = page_num + 1;
-                    ans.push(body);
-                    Some(())
-                } else {
-                    ans.push(body);
-                    None
+            let response: Response;
+            let permit = self.sem.acquire_many(50).await.unwrap();
+            let temp = self
+                .async_client
+                .get(url.to_string() + "&page=" + page_num.to_string().as_str())
+                .send();
+            match temp.await {
+                Err(e) => {
+                    println!("In getting {url} : {e}");
+                    return ans;
                 }
-            }() {
-                Some(_) => {}
-                None => {
-                    break;
+                Ok(body) => {
+                    response = body;
                 }
-            };
+            }
+            let temp: f64 = response
+                .headers()
+                .get("x-rate-limit-remaining")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            if (temp < 0.0) {
+                println!("In getting {url} : rate limit exceeded wait 10s");
+                sleep(Duration::from_millis(1000 * 10)).await;
+                continue;
+            }
+            if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
+                println!("{:?}", response.headers());
+                continue;
+            }
+            if response
+                .headers()
+                .get("link")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .contains("rel=\"next\"")
+            {
+                page_num = page_num + 1;
+                ans.push(response);
+            } else {
+                ans.push(response);
+                return ans;
+            }
+        }
+    }
+
+    async fn get_remote_json_list<A: Clone, B: Clone, T: GetFromJson<T, A, B>>(
+        &self,
+        st: &str,
+        a: A,
+        b: B,
+    ) -> Vec<Rc<T>> {
+        let mut ans = Vec::new();
+        let responses = self.get_remote_resource(st);
+        for response in responses.await {
+            let result: Value;
+
+            match response.json().await.ok() {
+                None => continue,
+                Some(temp) => {
+                    result = temp;
+                }
+            }
+            match result.as_array() {
+                None => continue,
+                Some(result) => {
+                    for i in result {
+                        let item = T::get_from_json(i, a.clone(), b.clone());
+                        // println!("course={course:?}");
+                        match item {
+                            None => continue,
+                            Some(item) => {
+                                let rc = Rc::new(item);
+                                ans.push(rc);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         ans
     }
     pub fn get_course_list(&self) -> Vec<Rc<Course>> {
-        let mut ans = Vec::new();
-        let responses = self
-            .get_remote_resource(format!("{}/api/v1/courses?include[]=term", self.url).as_str());
-        for response in responses {
-            let _ = match || -> Option<()> {
-                let result: Value = response.json().ok()?;
-                let result: &Vec<Value> = result.as_array()?;
-                for i in result {
-                    let course = get_course_from_json(i);
-                    // println!("course={course:?}");
-                    match course {
-                        None => continue,
-                        Some(course) => {
-                            let rc = Rc::new(course);
-                            ans.push(rc);
-                        }
-                    }
-                }
-                Some(())
-            }() {
-                Some(_) => {}
-                None => {
-                    break;
-                }
-            };
-        }
-        ans
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(self.get_course_list_helper())
     }
-    pub fn get_folder_list(&self, course: Rc<Course>) -> Vec<Rc<Folder>> {
+    async fn get_course_list_helper(&self) -> Vec<Rc<Course>> {
+        let url = format!("{}/api/v1/courses?include[]=term", self.url);
+        self.get_remote_json_list::<i32, i32, Course>(&url, 1, 1)
+            .await
+    }
+    pub async fn get_folder_list(&self, course: Rc<Course>) -> Vec<Rc<Folder>> {
         let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.id);
-        let responses = self.get_remote_resource(url.as_str());
-        let mut ans = Vec::new();
-        for response in responses {
-            let _ = match || -> Option<()> {
-                let result: Value = response.json().ok()?;
-                let result: &Vec<Value> = result.as_array()?;
-                for i in result {
-                    let folder = get_folder_from_json(i, Rc::clone(&course));
-                    // println!("folder={folder:?}");
-                    match folder {
-                        None => continue,
-                        Some(folder) => {
-                            let rc = Rc::new(folder);
-                            ans.push(rc);
-                        }
-                    }
-                }
-                Some(())
-            }() {
-                Some(_) => {}
-                None => {
-                    break;
-                }
-            };
-        }
-        ans
+        self.get_remote_json_list::<Rc<Course>, i32, Folder>(&url, course, 1)
+            .await
     }
 
-    pub fn get_file_list(&self, folder: Rc<Folder>, path: PathBuf) -> Vec<Rc<File>> {
+    pub async fn get_file_list(&self, folder: Rc<Folder>, path: PathBuf) -> Vec<Rc<CourseFile>> {
         let url = folder.filelink.as_str();
         // println!("{url}");
-        let responses = self.get_remote_resource(url);
-        let mut ans = Vec::new();
-        for response in responses {
-            let _ = match || -> Option<()> {
-                let result: Value = response.json().ok()?;
-                let result: &Vec<Value> = result.as_array()?;
-                for i in result {
-                    let file = get_file_from_json(i, Rc::clone(&folder), path.clone());
-                    // println!("file={file:?}");
-                    match file {
-                        None => continue,
-                        Some(file) => {
-                            let rc = Rc::new(file);
-                            ans.push(rc);
+        self.get_remote_json_list::<Rc<Folder>, PathBuf, CourseFile>(&url, folder.clone(), path)
+            .await
+    }
+
+    pub async fn download_file(
+        &self,
+        path: &Path,
+        url: &str,
+        file_name: &str,
+        pb: &ProgressBar,
+    ) -> () {
+        let mut buf: BufWriter<File>;
+        let permit = self.sem.acquire_many(50).await.unwrap();
+        match tokio::fs::File::create(path.join(file_name.to_string() + ".temp")).await {
+            Err(e) => {
+                println!("In creating {file_name} : {e}");
+                return;
+            }
+            Ok(temp) => {
+                buf = BufWriter::new(temp);
+            }
+        }
+        let response = self.async_client.get(url).send().await;
+        let mut length = 0;
+        match response {
+            Ok(mut temp) => {
+                while let chunk = temp.chunk().await {
+                    match chunk {
+                        Ok(chunk) => match chunk {
+                            None => {
+                                sleep(Duration::from_millis(1000)).await;
+                                break;
+                            }
+                            Some(chunk) => {
+                                buf.write(&chunk.slice(0..chunk.len())).await;
+                                pb.inc(chunk.len() as u64);
+                                length += chunk.len();
+                            }
+                        },
+                        Err(e) => {
+                            println!("{:?}", temp.headers());
+                            println!("In downloading[1] {file_name} : {e}");
                         }
                     }
                 }
-                Some(())
-            }() {
-                Some(_) => {}
-                None => {
-                    break;
-                }
-            };
-        }
-        ans
-    }
-
-    pub async fn download_file(&self, path: &Path, url: &str) -> () {
-        let temp = self.async_client.get(url).send().await;
-        match temp {
-            Ok(temp) => {
-                let temp = &temp.bytes().await;
+                let temp = buf.flush().await;
                 match temp {
-                    Ok(temp) => {
-                        let temp_file = std::fs::File::create(path);
-                        let mut file: std::fs::File;
-                        match temp_file {
-                            Err(e) => {
-                                println!("{e}");
-                                return;
-                            }
-                            Ok(temp) => file = temp,
-                        };
-                        match file.write(temp) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                println!("{e}");
-                            }
-                        };
-                    }
-                    Err(e) => {
-                        println!("{e}")
-                    }
-                };
+                    Err(e) => println!("In downloading[2] {file_name} : {e}"),
+                    Ok(_) => {}
+                }
+                // match {}
+                // println!("{:?} {:?} {:?}", temp, length, file_name);
+                fs::rename(
+                    path.join(file_name.to_string() + ".temp"),
+                    path.join(file_name.to_string()),
+                );
+                pb.set_message(format!("{file_name} done"));
             }
-            Err(e) => println!("{e}"),
+            Err(e) => println!("In downloading[3] {file_name} : {e}"),
         }
     }
 }
