@@ -11,3 +11,5 @@ my_key.rs
 *.json
 
 testFolder/
+testFolder1/
+testFolder2/

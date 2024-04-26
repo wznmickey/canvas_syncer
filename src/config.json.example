@@ -1,5 +1,12 @@
-{
+[{
     "key": "Bearer xxxx",
     "local_place": "canvas",
-    "canvas_url": "https://jicanvas.com"
-}
+    "canvas_url": "https://jicanvas.com",
+    "allow_term": true
+},{
+    "key": "Bearer xxxx",
+    "local_place": "canvas",
+    "canvas_url": "https://oc.sjtu.edu.cn",
+    "allow_term": true
+},
+]

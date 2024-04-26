@@ -2,7 +2,9 @@ use chrono::DateTime;
 use chrono::Utc;
 use serde_json::Value;
 use std::cmp::max;
-use std::{fs, path::PathBuf, rc::Rc};
+use std::rc::Rc;
+use std::sync::Arc;
+use std::{fs, path::PathBuf};
 pub enum FileStatus {
     Latest,
     NeedUpdate,

@@ -66,8 +66,14 @@ impl RemoteData {
                 sleep(Duration::from_millis(1000 * 10)).await;
                 continue;
             }
+
+            if response.headers().get("status").unwrap().to_str().unwrap() == "401 Unauthorized" {
+                return ans;
+            }
+
             if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
-                println!("{:?}", response.headers());
+                println!("{:?} in {:?}", response.headers(), url);
+                sleep(Duration::from_millis(1000)).await;
                 continue;
             }
             if response

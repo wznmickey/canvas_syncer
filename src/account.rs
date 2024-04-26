@@ -22,8 +22,8 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new(st: &str) -> Self {
-        let config = Config::read_file(st);
+    pub fn new(c: Config) -> Self {
+        let config: Config = c;
         config.print();
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
         let course: Vec<Rc<Course>> = remote_data.get_course_list();
@@ -46,7 +46,6 @@ impl Account {
 
     pub async fn get_folders_helper(&self) -> Vec<Rc<Folder>> {
         let pb = &ProgressBar::new(self.course.len() as u64);
-
         let result = join_all(self.course.iter().map(|course| async move {
             let temp = self.remote_data.get_folder_list(Rc::clone(&course)).await;
             pb.inc(1);
@@ -62,14 +61,27 @@ impl Account {
     pub fn create_folders(&self) -> () {
         let pb = ProgressBar::new(self.folders.len() as u64);
         for folder in &self.folders {
-            create_dir_all(
-                self.config.local_place.clone()
-                    + "/"
-                    + &folder.course.name
-                    + " "
-                    + &folder.fullname,
-            )
-            .unwrap();
+            if (self.config.allow_term) {
+                create_dir_all(
+                    self.config.local_place.clone()
+                        + "/"
+                        + &folder.course.term_name
+                        + "/"
+                        + &folder.course.name
+                        + " "
+                        + &folder.fullname,
+                )
+                .unwrap();
+            } else {
+                create_dir_all(
+                    self.config.local_place.clone()
+                        + "/"
+                        + &folder.course.name
+                        + " "
+                        + &folder.fullname,
+                )
+                .unwrap();
+            }
             pb.inc(1);
         }
         pb.finish_with_message("done");
@@ -83,9 +95,14 @@ impl Account {
     async fn get_files_helper(&self) -> Vec<Rc<CourseFile>> {
         let pb = &ProgressBar::new(self.folders.len() as u64);
         let result = join_all(self.folders.iter().map(|folder| async move {
+            let path = if (!self.config.allow_term) {
+                self.config.local_place.clone()
+            } else {
+                self.config.local_place.clone() + "/" + folder.course.term_name.as_str()
+            };
             let temp = self
                 .remote_data
-                .get_file_list(Rc::clone(&folder), self.config.local_place.clone().into())
+                .get_file_list(Rc::clone(&folder), (path).into())
                 .await;
             pb.inc(1);
             temp
@@ -121,7 +138,11 @@ impl Account {
         // for file in &self.need_download_files {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
-        println!("download size: {}", self.download_size);
+        if (self.need_download_files.len() == 0) {
+            println!("No files need to download");
+            return;
+        }
+        println!("download size: {} MiB", self.download_size as f64 / 1024.0 / 1024.0);
         if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Do you want to download?")
             .interact()
@@ -148,7 +169,7 @@ impl Account {
                 // println!("finished: {:?}", file.my_full_path);
             }));
             result.await;
-            pb.finish_with_message("done");
+            pb.finish_with_message("All downloaded");
         } else {
             println!("Do not download");
         }
@@ -161,7 +182,11 @@ impl Account {
         // for file in &self.need_update_files {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
-        println!("update size: {}", self.update_size);
+        if (self.need_update_files.len() == 0) {
+            println!("No files need to update");
+            return;
+        }
+        println!("update size: {} MiB", self.update_size as f64 / 1024.0 / 1024.0);
         if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Do you want to update?")
             .interact()
@@ -199,7 +224,7 @@ impl Account {
                 // println!("finished: {:?}", file.my_full_path);
             }));
             result.await;
-            pb.finish_with_message("done");
+            pb.finish_with_message("all updated");
         } else {
             println!("Do not update");
         }
