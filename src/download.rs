@@ -1,4 +1,5 @@
 use crate::course::*;
+use indicatif::MultiProgress;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use reqwest::header;
 use reqwest::Response;
@@ -158,6 +159,8 @@ impl RemoteData {
         url: &str,
         file_name: &str,
         pb: &ProgressBar,
+        m: &MultiProgress,
+        size: u64,
     ) -> () {
         let mut buf: BufWriter<File>;
         let permit = self.sem.acquire_many(50).await.unwrap();
@@ -171,6 +174,12 @@ impl RemoteData {
             }
         }
         let response = self.async_client.get(url).send().await;
+        let mpb = m.add(ProgressBar::new(size));
+        mpb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {wide_msg} [{bar:.cyan/blue}] {bytes}/{total_bytes} ({eta} {bytes_per_sec})")
+            .unwrap()
+            .with_key("eta", |state: &ProgressState, w: &mut dyn std::fmt::Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+            .progress_chars("#>-"));
+        mpb.set_message(format!("In {:?}: {file_name}",path));
         let mut length = 0;
         match response {
             Ok(mut temp) => {
@@ -184,6 +193,7 @@ impl RemoteData {
                             Some(chunk) => {
                                 buf.write(&chunk.slice(0..chunk.len())).await;
                                 pb.inc(chunk.len() as u64);
+                                mpb.inc(chunk.len() as u64);
                                 length += chunk.len();
                             }
                         },
@@ -205,6 +215,7 @@ impl RemoteData {
                     path.join(file_name.to_string()),
                 );
                 pb.set_message(format!("{file_name} done"));
+                mpb.finish_and_clear();
             }
             Err(e) => println!("In downloading[3] {file_name} : {e}"),
         }
