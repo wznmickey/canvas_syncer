@@ -1,9 +1,9 @@
 use chrono::DateTime;
 use chrono::Utc;
 use serde_json::Value;
+use std::cell::RefCell;
 use std::cmp::max;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::{fs, path::PathBuf};
 pub enum FileStatus {
     Latest,
@@ -11,8 +11,8 @@ pub enum FileStatus {
     NotExist,
 }
 
-pub trait GetFromJson <T,A,B>{
-    fn get_from_json(x: &Value,a:A,b:B) -> Option<T>;
+pub trait GetFromJson<T, A, B> {
+    fn get_from_json(x: &Value, a: A, b: B) -> Option<T>;
 }
 
 #[derive(Debug)]
@@ -23,8 +23,8 @@ pub struct Course {
     pub term_id: i64,
     pub term_name: String,
 }
-impl GetFromJson <Course,i32,i32> for Course {
-    fn get_from_json(x: &Value,_:i32,_:i32) -> Option<Course> {
+impl GetFromJson<Course, i32, i32> for Course {
+    fn get_from_json(x: &Value, _: i32, _: i32) -> Option<Course> {
         Some(Course {
             id: x["id"].as_i64()?,
             name: x["name"].as_str()?.to_string(),
@@ -40,11 +40,11 @@ pub struct Folder {
     id: i64,
     pub name: String,
     pub fullname: String,
-    pub course: Rc<Course>,
+    pub course: Rc<RefCell<Course>>,
     pub filelink: String,
 }
-impl GetFromJson<Folder,Rc<Course>,i32> for Folder {
-    fn get_from_json(x: &Value, c: Rc<Course>,_:i32) -> Option<Folder> {
+impl GetFromJson<Folder, Rc<RefCell<Course>>, i32> for Folder {
+    fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Folder> {
         Some(Folder {
             id: x["id"].as_i64()?,
             name: x["name"].as_str()?.to_string(),
@@ -61,7 +61,7 @@ pub struct CourseFile {
     pub display_name: String,
     pub filename: String,
     pub url: String,
-    pub folder: Rc<Folder>,
+    pub folder: Rc<RefCell<Folder>>,
     pub content_type: String,
     pub size: u64,
     pub created_time: DateTime<Utc>,
@@ -69,15 +69,19 @@ pub struct CourseFile {
     pub modified_time: DateTime<Utc>,
     pub my_parent_path: PathBuf,
 }
-impl GetFromJson<CourseFile,Rc<Folder>,PathBuf> for CourseFile {
-    fn get_from_json(x: &Value, f: Rc<Folder>, path: PathBuf) -> Option<CourseFile> {
+impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
+    fn get_from_json(x: &Value, f: Rc<RefCell<Folder>>, path: PathBuf) -> Option<CourseFile> {
         let temp = x["display_name"].as_str()?.to_string();
         Some(CourseFile {
             id: x["id"].as_i64()?,
-            my_parent_path: { path.join((&f.course.name).to_string() + " " + &f.fullname) },
+            my_parent_path: {
+                path.join(
+                    (&f.borrow().course.borrow().name).to_string() + " " + &f.borrow().fullname,
+                )
+            },
             display_name: temp,
             filename: x["filename"].as_str()?.to_string(),
-            folder: f,
+            folder: f.clone(),
             url: x["url"].as_str()?.to_string(),
             content_type: x["content-type"].as_str()?.to_string(),
             size: x["size"].as_u64()?,

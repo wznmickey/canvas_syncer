@@ -3,6 +3,7 @@ use crate::course::*;
 use crate::download::*;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
+use std::cell::RefCell;
 use std::fmt::Write;
 use std::fs;
 use std::fs::*;
@@ -13,11 +14,11 @@ use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 pub struct Account {
     config: Config,
     remote_data: RemoteData,
-    course: Vec<Rc<Course>>,
-    folders: Vec<Rc<Folder>>,
-    files: Vec<Rc<CourseFile>>,
-    need_update_files: Vec<Rc<CourseFile>>,
-    need_download_files: Vec<Rc<CourseFile>>,
+    course: Vec<Rc<RefCell<Course>>>,
+    folders: Vec<Rc<RefCell<Folder>>>,
+    files: Vec<Rc<RefCell<CourseFile>>>,
+    need_update_files: Vec<Rc<RefCell<CourseFile>>>,
+    need_download_files: Vec<Rc<RefCell<CourseFile>>>,
     download_size: u64,
     update_size: u64,
 }
@@ -27,7 +28,7 @@ impl Account {
         let config: Config = c;
         config.print();
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
-        let course: Vec<Rc<Course>> = remote_data.get_course_list();
+        let course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
         Account {
             config,
             remote_data,
@@ -45,7 +46,7 @@ impl Account {
         self.folders = rt.block_on(self.get_folders_helper());
     }
 
-    pub async fn get_folders_helper(&self) -> Vec<Rc<Folder>> {
+    pub async fn get_folders_helper(&self) -> Vec<Rc<RefCell<Folder>>> {
         let pb = &ProgressBar::new(self.course.len() as u64);
         let result = join_all(self.course.iter().map(|course| async move {
             let temp = self.remote_data.get_folder_list(Rc::clone(&course)).await;
@@ -62,13 +63,14 @@ impl Account {
     pub fn create_folders(&self) -> () {
         let pb = ProgressBar::new(self.folders.len() as u64);
         for folder in &self.folders {
-            if (self.config.allow_term) {
+            let folder = folder.borrow();
+            if self.config.allow_term {
                 create_dir_all(
                     self.config.local_place.clone()
                         + "/"
-                        + &folder.course.term_name
+                        + &folder.course.borrow().term_name
                         + "/"
-                        + &folder.course.name
+                        + &folder.course.borrow().name
                         + " "
                         + &folder.fullname,
                 )
@@ -77,7 +79,7 @@ impl Account {
                 create_dir_all(
                     self.config.local_place.clone()
                         + "/"
-                        + &folder.course.name
+                        + &folder.course.borrow().name
                         + " "
                         + &folder.fullname,
                 )
@@ -93,13 +95,13 @@ impl Account {
         self.files = rt.block_on(self.get_files_helper());
     }
 
-    async fn get_files_helper(&self) -> Vec<Rc<CourseFile>> {
+    async fn get_files_helper(&self) -> Vec<Rc<RefCell<CourseFile>>> {
         let pb = &ProgressBar::new(self.folders.len() as u64);
         let result = join_all(self.folders.iter().map(|folder| async move {
-            let path = if (!self.config.allow_term) {
+            let path = if !self.config.allow_term {
                 self.config.local_place.clone()
             } else {
-                self.config.local_place.clone() + "/" + folder.course.term_name.as_str()
+                self.config.local_place.clone() + "/" + folder.borrow().course.borrow().term_name.as_str()
             };
             let temp = self
                 .remote_data
@@ -117,15 +119,15 @@ impl Account {
     }
     pub fn calculate_files(&mut self) -> () {
         for file in &self.files {
-            let temp = file.get_status();
+            let temp = file.borrow().get_status();
             match temp {
                 FileStatus::NeedUpdate => {
                     self.need_update_files.push(Rc::clone(file));
-                    self.update_size += file.size;
+                    self.update_size += file.borrow().size;
                 }
                 FileStatus::NotExist => {
                     self.need_download_files.push(Rc::clone(file));
-                    self.download_size += file.size;
+                    self.download_size += file.borrow().size;
                 }
                 FileStatus::Latest => {}
             }
@@ -139,7 +141,7 @@ impl Account {
         // for file in &self.need_download_files {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
-        if (self.need_download_files.len() == 0) {
+        if self.need_download_files.len() == 0 {
             println!("No files need to download");
             return;
         }
@@ -165,12 +167,12 @@ impl Account {
                 // println!("start downloading : {:?}", file.my_full_path);
                 self.remote_data
                     .download_file(
-                        &file.my_parent_path,
-                        file.url.as_str(),
-                        &file.display_name,
+                        &file.borrow().my_parent_path,
+                        file.borrow().url.as_str(),
+                        &file.borrow().display_name,
                         &pb,
                         &m,
-                        file.size,
+                        file.borrow().size,
                     )
                     .await;
                 // println!("finished: {:?}", file.my_full_path);
@@ -219,19 +221,19 @@ impl Account {
                     .to_string();
 
                 let my_full_path_old = file
-                    .my_parent_path
-                    .join(x + "_" + file.display_name.as_str());
-                let my_full_path_new = file.my_parent_path.join(&file.display_name);
+                    .borrow().my_parent_path
+                    .join(x + "_" + file.borrow().display_name.as_str());
+                let my_full_path_new = file.borrow().my_parent_path.join(&file.borrow().display_name);
                 fs::copy(my_full_path_new, my_full_path_old);
 
                 self.remote_data
                     .download_file(
-                        &file.my_parent_path,
-                        file.url.as_str(),
-                        &file.display_name,
+                        &file.borrow().my_parent_path,
+                        file.borrow().url.as_str(),
+                        &file.borrow().display_name,
                         &pb,
                         &m,
-                        file.size,
+                        file.borrow().size,
                     )
                     .await;
                 // println!("finished: {:?}", file.my_full_path);

@@ -4,6 +4,7 @@ use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use reqwest::header;
 use reqwest::Response;
 use serde_json::Value;
+use std::cell::RefCell;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -99,7 +100,7 @@ impl RemoteData {
         st: &str,
         a: A,
         b: B,
-    ) -> Vec<Rc<T>> {
+    ) -> Vec<Rc<RefCell<T>>> {
         let mut ans = Vec::new();
         let responses = self.get_remote_resource(st);
         for response in responses.await {
@@ -120,7 +121,7 @@ impl RemoteData {
                         match item {
                             None => continue,
                             Some(item) => {
-                                let rc = Rc::new(item);
+                                let rc = Rc::new(RefCell::new(item));
                                 ans.push(rc);
                             }
                         }
@@ -131,25 +132,25 @@ impl RemoteData {
 
         ans
     }
-    pub fn get_course_list(&self) -> Vec<Rc<Course>> {
+    pub fn get_course_list(&self) -> Vec<Rc<RefCell<Course>>> {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(self.get_course_list_helper())
     }
-    async fn get_course_list_helper(&self) -> Vec<Rc<Course>> {
+    async fn get_course_list_helper(&self) -> Vec<Rc<RefCell<Course>>> {
         let url = format!("{}/api/v1/courses?include[]=term", self.url);
         self.get_remote_json_list::<i32, i32, Course>(&url, 1, 1)
             .await
     }
-    pub async fn get_folder_list(&self, course: Rc<Course>) -> Vec<Rc<Folder>> {
-        let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.id);
-        self.get_remote_json_list::<Rc<Course>, i32, Folder>(&url, course, 1)
+    pub async fn get_folder_list(&self, course: Rc<RefCell<Course>>) -> Vec<Rc<RefCell<Folder>>> {
+        let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.borrow().id);
+        self.get_remote_json_list::<Rc<RefCell<Course>>, i32, Folder>(&url, course, 1)
             .await
     }
 
-    pub async fn get_file_list(&self, folder: Rc<Folder>, path: PathBuf) -> Vec<Rc<CourseFile>> {
-        let url = folder.filelink.as_str();
+    pub async fn get_file_list(&self, folder: Rc<RefCell<Folder>>, path: PathBuf) -> Vec<Rc<RefCell<CourseFile>>> {
+        let url = &folder.borrow().filelink;
         // println!("{url}");
-        self.get_remote_json_list::<Rc<Folder>, PathBuf, CourseFile>(&url, folder.clone(), path)
+        self.get_remote_json_list::<Rc<RefCell<Folder>>, PathBuf, CourseFile>(&url, folder.clone(), path)
             .await
     }
 
@@ -179,7 +180,7 @@ impl RemoteData {
             .unwrap()
             .with_key("eta", |state: &ProgressState, w: &mut dyn std::fmt::Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
             .progress_chars("#>-"));
-        mpb.set_message(format!("In {:?}: {file_name}",path));
+        mpb.set_message(format!("In {:?}: {file_name}", path));
         let mut length = 0;
         match response {
             Ok(mut temp) => {
