@@ -2,6 +2,11 @@ use dialoguer::{theme::ColorfulTheme, Input};
 use serde::{Deserialize, Serialize};
 use std::fs::*;
 use std::io::*;
+
+use crate::filter::CourseFilter;
+use crate::filter::FileFilter;
+use crate::filter::Filters;
+use crate::filter::TermFilter;
 #[derive(Serialize, Deserialize)]
 
 pub struct Config {
@@ -9,14 +14,14 @@ pub struct Config {
     pub local_place: String,
     pub canvas_url: String,
     pub allow_term: bool,
+    pub filters: Option<Filters>,
 }
 
 impl Config {
     pub fn print(&self) -> () {
         println!(
-            "local_place={local_place},canvas_url={canvas_url}",
-            local_place = self.local_place,
-            canvas_url = self.canvas_url
+            "local_place={:?},canvas_url={:?},{:?}",
+            self.local_place, self.canvas_url, self.filters,
         )
     }
     pub fn read_file(s: &str) -> Vec<Self> {
@@ -49,6 +54,7 @@ impl Config {
             local_place: local_place,
             canvas_url: canvas_url,
             allow_term: true,
+            filters: None,
         }
     }
     pub fn save(&self, str: &str) {

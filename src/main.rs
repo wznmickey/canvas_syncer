@@ -2,6 +2,7 @@ mod account;
 mod config;
 mod course;
 mod download;
+mod filter;
 use crate::{account::Account, config::Config};
 use clap::Parser;
 use rayon::prelude::*;

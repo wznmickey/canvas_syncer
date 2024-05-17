@@ -101,7 +101,9 @@ impl Account {
             let path = if !self.config.allow_term {
                 self.config.local_place.clone()
             } else {
-                self.config.local_place.clone() + "/" + folder.borrow().course.borrow().term_name.as_str()
+                self.config.local_place.clone()
+                    + "/"
+                    + folder.borrow().course.borrow().term_name.as_str()
             };
             let temp = self
                 .remote_data
@@ -221,9 +223,13 @@ impl Account {
                     .to_string();
 
                 let my_full_path_old = file
-                    .borrow().my_parent_path
+                    .borrow()
+                    .my_parent_path
                     .join(x + "_" + file.borrow().display_name.as_str());
-                let my_full_path_new = file.borrow().my_parent_path.join(&file.borrow().display_name);
+                let my_full_path_new = file
+                    .borrow()
+                    .my_parent_path
+                    .join(&file.borrow().display_name);
                 fs::copy(my_full_path_new, my_full_path_old);
 
                 self.remote_data
