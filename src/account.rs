@@ -1,6 +1,8 @@
 use crate::config::*;
+use crate::course;
 use crate::course::*;
 use crate::download::*;
+use crate::filter::object_filter_check;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
 use std::cell::RefCell;
@@ -28,7 +30,44 @@ impl Account {
         let config: Config = c;
         config.print();
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
-        let course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
+        let mut course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
+
+        match &config.filters {
+            Some(x) => match &x.term_filter {
+                Some(y) => match &y.object_filter {
+                    Some(z) => {
+                        course = course
+                            .iter()
+                            .filter(|&x| {
+                                object_filter_check(&z, x.borrow().term_id, &x.borrow().term_name)
+                            })
+                            .map(|x| Rc::clone(x))
+                            .collect();
+                    }
+                    None => {}
+                },
+                None => {}
+            },
+            _ => {}
+        }
+
+        match &config.filters {
+            Some(x) => match &x.course_filter {
+                Some(y) => match &y.object_filter {
+                    Some(z) => {
+                        course = course
+                            .iter()
+                            .filter(|&x| object_filter_check(&z, x.borrow().id, &x.borrow().name))
+                            .map(|x| Rc::clone(x))
+                            .collect();
+                    }
+                    None => {}
+                },
+                None => {}
+            },
+            _ => {}
+        }
+
         Account {
             config,
             remote_data,
