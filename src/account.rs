@@ -193,7 +193,7 @@ impl Account {
         // for file in &self.need_update_files {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
-        if (self.need_update_files.len() == 0) {
+        if self.need_update_files.len() == 0 {
             println!("No files need to update");
             return;
         }

@@ -5,11 +5,7 @@ mod download;
 mod filter;
 use crate::{account::Account, config::Config};
 use clap::Parser;
-use rayon::prelude::*;
-use std::{
-    fs,
-    thread::{self, JoinHandle},
-};
+use std::fs;
 /// Syncer of Canvas
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

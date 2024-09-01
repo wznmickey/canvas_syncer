@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::*;
 use std::io::*;
 
-use crate::filter::CourseFilter;
-use crate::filter::FileFilter;
 use crate::filter::Filters;
-use crate::filter::TermFilter;
 #[derive(Serialize, Deserialize)]
 
 pub struct Config {

@@ -38,3 +38,5 @@ pub struct Filters {
     pub term_filter: Option<TermFilter>,
     pub file_filter: Option<FileFilter>,
 }
+
+

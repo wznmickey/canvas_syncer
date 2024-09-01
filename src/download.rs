@@ -6,14 +6,12 @@ use reqwest::Response;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::sync::Semaphore;
-use tokio::task::yield_now;
 use tokio::time::{sleep, Duration};
 pub struct RemoteData {
     url: String,
@@ -33,7 +31,7 @@ impl RemoteData {
                 .unwrap(),
             // according to https://community.canvaslms.com/t5/Canvas-Developers-Group/API-Rate-Limiting/ba-p/255845 , it should be 700. But my test gives me 600. Maybe my canvas has a different setting.
             // https://canvas.instructure.com/doc/api/file.throttling.html
-            sem: Arc::new(Semaphore::new(600)),
+            sem: Arc::new(Semaphore::new(500)),
         }
     }
     async fn get_remote_resource(&self, url: &str) -> Vec<Response> {
@@ -41,7 +39,8 @@ impl RemoteData {
         let mut ans = Vec::new();
         loop {
             let response: Response;
-            let permit = self.sem.acquire_many(50).await.unwrap();
+            // permit is necessary. Otherwise, the program will be blocked by the rate limit.
+            let _permit = self.sem.acquire_many(50).await.unwrap();
             let temp = self
                 .async_client
                 .get(url.to_string() + "&page=" + page_num.to_string().as_str())
@@ -55,6 +54,7 @@ impl RemoteData {
                     response = body;
                 }
             }
+            // println!("{:?}",response.headers());
             let temp: f64 = response
                 .headers()
                 .get("x-rate-limit-remaining")
@@ -63,7 +63,7 @@ impl RemoteData {
                 .unwrap()
                 .parse()
                 .unwrap();
-            if (temp < 0.0) {
+            if temp < 0.0 {
                 println!("In getting {url} : rate limit exceeded wait 10s");
                 sleep(Duration::from_millis(1000 * 10)).await;
                 continue;
