@@ -1,12 +1,71 @@
-[{
+[
+  {
     "key": "Bearer xxxx",
     "local_place": "canvas",
     "canvas_url": "https://jicanvas.com",
-    "allow_term": true
-},{
+    "allow_term": true,
+    "filters": {
+      "term_filter": {
+        "object_filter": {
+          "name": {
+            "denies": [
+              "ABC",
+              "DEF"
+            ],
+            "allows": [],
+            "default": "allow"
+          },
+          "id": {
+            "denies": [],
+            "allows": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "course_filter": {
+        "object_filter": {
+          "name": {
+            "denies": [],
+            "allows": [],
+            "default": "deny"
+          },
+          "id": {
+            "denies": [],
+            "allows": [],
+            "default": "deny"
+          }
+        }
+      },
+      "file_filter": {}
+    }
+  },
+  {
     "key": "Bearer xxxx",
     "local_place": "canvas",
     "canvas_url": "https://oc.sjtu.edu.cn",
-    "allow_term": true
-},
+    "allow_term": true,
+    "filters": {
+      "term_filter": {
+        "object_filter": {
+          "name": {
+            "denies": [],
+            "allows": [
+              "1"
+            ],
+            "default": "allow"
+          },
+          "id": {
+            "denies": [
+              1
+            ],
+            "allows": []
+          }
+        }
+      },
+      "course_filter": {},
+      "file_filter": {}
+    }
+  }
 ]
