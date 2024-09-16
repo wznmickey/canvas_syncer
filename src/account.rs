@@ -68,6 +68,12 @@ impl Account {
             },
             _ => {}
         }
+        course.iter().for_each(|x| {
+            let temp = x.borrow().term_name.replace("/", "_").replace("\\", "_");
+            x.borrow_mut().term_name = temp;
+            let temp = x.borrow().name.replace("/", "_").replace("\\", "_");
+            x.borrow_mut().name = temp;
+        });
 
         Account {
             config,
@@ -104,7 +110,7 @@ impl Account {
         let pb = ProgressBar::new(self.folders.len() as u64);
         for folder in &self.folders {
             let folder = folder.borrow();
-            
+
             if self.config.allow_term {
                 create_dir_all(
                     Path::new(&self.config.local_place)
@@ -115,7 +121,7 @@ impl Account {
             } else {
                 create_dir_all(
                     Path::new(&self.config.local_place)
-                        .join(folder.course.borrow().name.clone() + " " + &folder.fullname)
+                        .join(folder.course.borrow().name.clone() + " " + &folder.fullname),
                 )
                 .unwrap();
             }

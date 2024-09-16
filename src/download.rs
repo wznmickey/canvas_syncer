@@ -73,6 +73,10 @@ impl RemoteData {
                 return ans;
             }
 
+            if response.headers().get("status").unwrap().to_str().unwrap() == "403 Forbidden" {
+                return ans;
+            }
+
             if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
                 println!("{:?} in {:?}", response.headers(), url);
                 sleep(Duration::from_millis(1000)).await;
@@ -142,16 +146,28 @@ impl RemoteData {
             .await
     }
     pub async fn get_folder_list(&self, course: Rc<RefCell<Course>>) -> Vec<Rc<RefCell<Folder>>> {
-        let url = format!("{}/api/v1/courses/{}/folders?", self.url, course.borrow().id);
+        let url = format!(
+            "{}/api/v1/courses/{}/folders?",
+            self.url,
+            course.borrow().id
+        );
         self.get_remote_json_list::<Rc<RefCell<Course>>, i32, Folder>(&url, course, 1)
             .await
     }
 
-    pub async fn get_file_list(&self, folder: Rc<RefCell<Folder>>, path: PathBuf) -> Vec<Rc<RefCell<CourseFile>>> {
+    pub async fn get_file_list(
+        &self,
+        folder: Rc<RefCell<Folder>>,
+        path: PathBuf,
+    ) -> Vec<Rc<RefCell<CourseFile>>> {
         let url = &folder.borrow().filelink;
         // println!("{url}");
-        self.get_remote_json_list::<Rc<RefCell<Folder>>, PathBuf, CourseFile>(&url, folder.clone(), path)
-            .await
+        self.get_remote_json_list::<Rc<RefCell<Folder>>, PathBuf, CourseFile>(
+            &url,
+            folder.clone(),
+            path,
+        )
+        .await
     }
 
     pub async fn download_file(
