@@ -47,7 +47,7 @@ impl RemoteData {
                 .send();
             match temp.await {
                 Err(e) => {
-                    println!("In getting {url} : {e}");
+                    println!("{}",t!("In getting %{url} : %{e}",url=url,e=e));
                     return ans;
                 }
                 Ok(body) => {
@@ -64,7 +64,7 @@ impl RemoteData {
                 .parse()
                 .unwrap();
             if temp < 0.0 {
-                println!("In getting {url} : rate limit exceeded wait 10s");
+                println!("{}",t!("In getting %{url} : rate limit exceeded wait 10s",url=url));
                 sleep(Duration::from_millis(1000 * 10)).await;
                 continue;
             }

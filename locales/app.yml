@@ -1,0 +1,50 @@
+Create folders...:
+  en: 'Crwate folders...'
+  zh: '创建文件夹...'
+Do not download:
+  en: "Do not download"
+  zh: "不下载"
+Do not update:
+  en: "Do not update"
+  zh: "不更新"
+Download files...:
+  en: "Download files..."
+  zh: "下载文件..."
+Get files list from canvas...:
+  en: "Get files list from canvas..."
+  zh: "从Canvas获取文件列表..."
+Get folders list from canvas...:
+  en: "Get folders list from canvas..."
+  zh: "从Canvas获取文件夹列表..."
+'In getting %{url} : rate limit exceeded wait 10s':
+  en: 'In getting %{url} : rate limit exceeded wait 10s'
+  zh: '在获取 %{url} : 速率超过限制 等待10秒'
+'In getting %{url} : %{e}':
+  en: 'In getting %{url} : %{e}'
+  zh: '在获取 %{url} : %{e}'
+No files need to download:
+  en: No files need to download
+  zh: 没有需要下载的文件
+No files need to update:
+  en: No files need to update
+  zh: 没有需要更新的文件
+'Place to download files:':
+  en: 'Place to download files:'
+  zh: '下载文件的位置:'
+Update files...:
+  en: 'Update files...'
+  zh: '更新文件...'
+Your Canvas URL,like https://oc.sjtu.edu.cn:
+  en: "Your Canvas URL,like https://oc.sjtu.edu.cn"
+  zh: '你的Canvas URL,例如 https://oc.sjtu.edu.cn'
+Your Canvas key:
+  en: Your Canvas key
+  zh: 你的Canvas key
+_version: 2
+'download size: %{size} MiB':
+  en: 'download size: %{size} MiB'
+  zh: '下载大小: %{size} MiB'
+'update size: %{size} MiB':
+  en: 'update size: %{size} MiB'
+  zh: '更新大小: %{size} MiB'
+

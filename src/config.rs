@@ -35,15 +35,15 @@ impl Config {
     // }
     pub fn new() -> Self {
         let key: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt("Your Canvas key")
+            .with_prompt(t!("Your Canvas key"))
             .interact_text()
             .unwrap();
         let local_place: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt("Place to download files:")
+            .with_prompt(t!("Place to download files:"))
             .interact_text()
             .unwrap();
         let canvas_url: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt("Your Canvas URL,like https://oc.sjtu.edu.cn")
+            .with_prompt(t!("Your Canvas URL,like https://oc.sjtu.edu.cn"))
             .interact_text()
             .unwrap();
         Self {

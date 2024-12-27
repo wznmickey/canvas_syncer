@@ -184,12 +184,15 @@ impl Account {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
         if self.need_download_files.len() == 0 {
-            println!("No files need to download");
+            println!("{}", t!("No files need to download"));
             return;
         }
         println!(
-            "download size: {} MiB",
-            self.download_size as f64 / 1024.0 / 1024.0
+            "{}",
+            t!(
+                "download size: %{size} MiB",
+                size = self.download_size as f64 / 1024.0 / 1024.0
+            )
         );
         if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Do you want to download?")
@@ -198,7 +201,7 @@ impl Account {
         {
             let m = MultiProgress::new();
             let pb = m.add(ProgressBar::new(self.download_size));
-            println!("Download files...");
+            println!("{}", t!("Download files..."));
             pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta} {bytes_per_sec})")
             .unwrap()
             .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
@@ -222,7 +225,7 @@ impl Account {
             result.await;
             pb.finish_with_message("All downloaded");
         } else {
-            println!("Do not download");
+            println!("{}", t!("Do not download"));
         }
     }
     pub fn update_files(&self) -> () {
@@ -234,19 +237,22 @@ impl Account {
         //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
         // }
         if self.need_update_files.len() == 0 {
-            println!("No files need to update");
+            println!("{}", t!("No files need to update"));
             return;
         }
         println!(
-            "update size: {} MiB",
-            self.update_size as f64 / 1024.0 / 1024.0
+            "{}",
+            t!(
+                "update size: %{size} MiB",
+                size = self.update_size as f64 / 1024.0 / 1024.0
+            )
         );
         if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Do you want to update?")
             .interact()
             .unwrap()
         {
-            println!("Update files...");
+            println!("{}", t!("Update files..."));
             let m = MultiProgress::new();
             let pb = m.add(ProgressBar::new(self.update_size));
             pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta} {bytes_per_sec})")
@@ -287,7 +293,7 @@ impl Account {
             result.await;
             pb.finish_with_message("all updated");
         } else {
-            println!("Do not update");
+            println!("{}", t!("Do not update"));
         }
     }
 }
