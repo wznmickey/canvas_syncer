@@ -51,7 +51,7 @@ jobs:
     - name: Run Cross
       if: ${{ matrix.cross }}
       run: |
-        cargo install cross --git https://github.com/cross-rs/cross.git 
+        cargo install cross --git https://github.com/cross-rs/cross.git --locked --rev 085092ca
         cross build --release --features vendor-openssl
 
     - name: Run Cargo
@@ -63,8 +63,7 @@ jobs:
       run: |
         directory=canvas_syncer-${{ matrix.target }}
         mkdir $directory
-        ls ./target -al
-        ls ./target/${{ matrix.target }} -al
+        ls ./target/${{ matrix.target }}/release
         cp README LICENSE $directory
         if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
           cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
