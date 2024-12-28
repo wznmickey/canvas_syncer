@@ -45,6 +45,3 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--locked --release"
           strip: true
-        with:
-          executable-name: canvas_syncer
-          target: ${{ matrix.platform.target }}
