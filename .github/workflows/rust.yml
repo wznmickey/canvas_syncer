@@ -52,7 +52,7 @@ jobs:
       if: ${{ matrix.cross }}
       run: |
         cargo install cross --git https://github.com/cross-rs/cross.git --locked --rev 085092ca
-        cross build --release -v
+        cross build --release -v -features vendor-openssl
 
     - name: Run Cargo
       if: ${{ !matrix.cross }}
