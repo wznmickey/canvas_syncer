@@ -63,7 +63,7 @@ jobs:
       run: |
         directory=typst-${{ matrix.target }}
         mkdir $directory
-        cp README.md LICENSE NOTICE $directory
+        cp README LICENSE $directory
         if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
           cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
           7z a -r $directory.zip $directory
