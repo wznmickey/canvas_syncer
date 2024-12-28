@@ -1,6 +1,8 @@
 on:
   release:
     types: [created]
+  push:
+    branches: [ "master" ]
 jobs:
   release:
     name: Release - ${{ matrix.platform.os-name }}
@@ -43,8 +45,6 @@ jobs:
           target: ${{ matrix.platform.target }}
           args: "--locked --release"
           strip: true
-      - name: Publish artifacts and release
-        uses: houseabsolute/actions-rust-release@v0
         with:
           executable-name: canvas_syncer
           target: ${{ matrix.platform.target }}
