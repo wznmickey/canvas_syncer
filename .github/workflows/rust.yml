@@ -63,6 +63,9 @@ jobs:
       run: |
         directory=canvas_syncer-${{ matrix.target }}
         mkdir $directory
+        ls -al
+        ls target -al
+        ls target/${{ matrix.target }} -al
         cp README LICENSE $directory
         if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
           cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
