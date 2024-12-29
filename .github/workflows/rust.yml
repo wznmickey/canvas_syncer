@@ -42,9 +42,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Maybe install SSL packages
-        run: sudo apt-get update --yes && sudo apt-get install --yes pkg-config openssl libssl-dev
-        if: matrix.platform.features == 'native-tls'
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v0
         with:

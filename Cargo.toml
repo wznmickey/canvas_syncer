@@ -23,4 +23,6 @@ rayon = "1.10.0"
 rust-i18n = "3.1.2"
 use = "0.0.1-pre.0"
 sys-locale = "0.3.2"
-openssl = { version = "0.10.68", features = ["vendored"] }
+[target.'cfg(not(any(target_os = "windows", target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos")))'.dependencies]
+openssl = { workspace = true, optional = true }
+vendor-openssl = ["openssl/vendored"]
