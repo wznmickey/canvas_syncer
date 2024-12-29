@@ -56,11 +56,11 @@ jobs:
     - name: Run Cross
       if: ${{ matrix.cross }}
       run:
-        cross build -p canvas_syncer --target ${{ matrix.target }} -v
+        cross build -p canvas_syncer -release --target ${{ matrix.target }} -v 
 
     - name: Run Cargo
       if: ${{ !matrix.cross }}
-      run: cargo build -p canvas_syncer --target ${{ matrix.target }} 
+      run: cargo build -p canvas_syncer  -release --target ${{ matrix.target }} 
     - name: create artifact directory
       shell: bash
       run: |
