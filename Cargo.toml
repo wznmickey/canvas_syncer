@@ -24,4 +24,3 @@ rust-i18n = "3.1.2"
 use = "0.0.1-pre.0"
 sys-locale = "0.3.2"
 openssl = { version = "0.10.68", features = ["vendored"] }
-vendor-openssl = ["openssl/vendored"]
