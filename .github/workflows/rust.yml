@@ -8,85 +8,44 @@ on:
     types: [published]
 
 jobs:
-  build-release:
-    name: release ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
+  release:
+    name: Release - ${{ matrix.platform.os-name }}
     strategy:
-      fail-fast: false
       matrix:
-        include:
-        - target: x86_64-unknown-linux-musl
-          os: ubuntu-22.04
-          cross: true
-        - target: aarch64-unknown-linux-musl
-          os: ubuntu-22.04
-          cross: true
-        - target: armv7-unknown-linux-musleabi
-          os: ubuntu-22.04
-          cross: true
-        - target: riscv64gc-unknown-linux-gnu
-          os: ubuntu-22.04
-          cross: true
-        - target: x86_64-apple-darwin
-          os: macos-latest
-          cross: false
-        - target: aarch64-apple-darwin
-          os: macos-latest
-          cross: false
-        - target: x86_64-pc-windows-msvc
-          os: windows-latest
-          cross: false
-        - target: aarch64-pc-windows-msvc
-          os: windows-latest
-          cross: false
+        platform:
+          - os-name: FreeBSD-x86_64
+            runs-on: ubuntu-20.04
+            target: x86_64-unknown-freebsd
+            skip_tests: true
 
+          - os-name: Linux-x86_64
+            runs-on: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+
+          - os-name: Linux-aarch64
+            runs-on: ubuntu-20.04
+            target: aarch64-unknown-linux-musl
+
+          - os-name: Linux-riscv64
+            runs-on: ubuntu-20.04
+            target: riscv64gc-unknown-linux-gnu
+
+          - os-name: Windows-x86_64
+            runs-on: windows-latest
+            target: x86_64-pc-windows-msvc
+
+          - os-name: macOS-x86_64
+            runs-on: macOS-latest
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform.runs-on }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        target: ${{ matrix.target }}
-
-    - name: Install Cross
-      if: ${{ matrix.cross }}
-      run:
-        cargo install cross --git https://github.com/cross-rs/cross.git
-
-    - name: Run Cross
-      if: ${{ matrix.cross }}
-      run:
-        cross build -p cnavas_syncer --target ${{ matrix.target }} -v -features vendor-openssl
-
-    - name: Run Cargo
-      if: ${{ !matrix.cross }}
-      run: cargo build -p canvas_syncer --target ${{ matrix.target }} 
-    - name: create artifact directory
-      shell: bash
-      run: |
-        directory=canvas_syncer-${{ matrix.target }}
-        mkdir $directory
-        ls ./target/release
-        cp README LICENSE $directory
-        if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
-          cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
-          7z a -r $directory.zip $directory
-        else
-          cp target/${{ matrix.target }}/release/typst $directory
-          tar cJf $directory.tar.xz $directory
-        fi
-
-    - uses: actions/upload-artifact@v4
-      if: github.event_name == 'workflow_dispatch'
-      with:
-        name: canvas_syncer-${{ matrix.target }}
-        path: "canvas_syncer-${{ matrix.target }}.*"
-        retention-days: 3
-
-    - uses: ncipollo/release-action@v1.14.0
-      if: github.event_name == 'release'
-      with:
-        artifacts: "canvas_syncer-${{ matrix.target }}.*"
-        allowUpdates: true
-        omitNameDuringUpdate: true
-        omitBodyDuringUpdate: true
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: ${{ matrix.platform.command }}
+          target: ${{ matrix.platform.target }}
+          args: "--locked --release"
+          strip: true
