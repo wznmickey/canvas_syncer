@@ -56,7 +56,7 @@ jobs:
     - name: Run Cross
       if: ${{ matrix.cross }}
       run:
-        cross build -p cnavas_syncer --target ${{ matrix.target }} -v
+        cross build -p canvas_syncer --target ${{ matrix.target }} -v
 
     - name: Run Cargo
       if: ${{ !matrix.cross }}
