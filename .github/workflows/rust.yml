@@ -64,7 +64,7 @@ jobs:
     - name: create artifact directory
       shell: bash
       run: |
-        directory=canvas_syncer-${{ matrix.target }}
+        directory=${{ matrix.target }}
         mkdir $directory
         cp README LICENSE $directory
         if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
