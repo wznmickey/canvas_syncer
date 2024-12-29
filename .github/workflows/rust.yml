@@ -68,6 +68,8 @@ jobs:
         mkdir $directory
         cp README LICENSE $directory
         ls target
+        ls target/${{ matrix.target }}
+        ls target/${{ matrix.target }}/release
         if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
           cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
           7z a -r $directory.zip $directory
