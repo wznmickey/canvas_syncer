@@ -71,7 +71,7 @@ jobs:
           cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
           7z a -r $directory.zip $directory
         else
-          cp target/${{ matrix.target }}/release/typst $directory
+          cp target/${{ matrix.target }}/release/cnavas_syncer $directory
           tar cJf $directory.tar.xz $directory
         fi
 
