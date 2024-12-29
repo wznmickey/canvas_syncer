@@ -19,20 +19,28 @@ jobs:
         include:
         - target: x86_64-unknown-linux-musl
           os: ubuntu-22.04
+          cross: true
         - target: aarch64-unknown-linux-musl
           os: ubuntu-22.04
+          cross: true
         - target: armv7-unknown-linux-musleabi
           os: ubuntu-22.04
+          cross: true
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-22.04
+          cross: true
         - target: x86_64-apple-darwin
           os: macos-latest
+          cross: false
         - target: aarch64-apple-darwin
           os: macos-latest
+          cross: false
         - target: x86_64-pc-windows-msvc
           os: windows-latest
+          cross: false
         - target: aarch64-pc-windows-msvc
           os: windows-latest
+          cross: false
 
     steps:
     - uses: actions/checkout@v4
@@ -40,7 +48,17 @@ jobs:
       with:
         target: ${{ matrix.target }}
 
+    - name: Install Cross
+      if: ${{ matrix.cross }}
+      run:
+        cargo install cross --git https://github.com/cross-rs/cross.git
     - name: Run Cargo
+      if: ${{ matrix.cross }}
+      run:
+        cross build -p cnavas_syncer --release --target ${{ matrix.target }} -v -features vendor-openssl
+
+    - name: Run Cargo
+      if: ${{ !matrix.cross }}
       run: cargo build -p canvas_syncer --release --target ${{ matrix.target }} 
     - name: create artifact directory
       shell: bash
