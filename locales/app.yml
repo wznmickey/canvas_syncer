@@ -35,7 +35,7 @@ Update files...:
   en: 'Update files...'
   zh: '更新文件...'
 Your Canvas URL,like https://oc.sjtu.edu.cn:
-  en: "Your Canvas URL,like https://oc.sjtu.edu.cn"
+  en: "Your Canvas URL, like https://oc.sjtu.edu.cn"
   zh: '你的Canvas URL,例如 https://oc.sjtu.edu.cn'
 Your Canvas key:
   en: Your Canvas key
@@ -47,4 +47,10 @@ _version: 2
 'update size: %{size} MiB':
   en: 'update size: %{size} MiB'
   zh: '更新大小: %{size} MiB'
+Do you want to download?:
+  en: Do you want to download?
+  zh: 你想要下载吗？
+Do you want to update?:
+  en: Do you want to update?
+  zh: 你想要更新吗？
 

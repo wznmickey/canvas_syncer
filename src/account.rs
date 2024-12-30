@@ -195,7 +195,7 @@ impl Account {
             )
         );
         if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt("Do you want to download?")
+            .with_prompt(t!("Do you want to download?"))
             .interact()
             .unwrap()
         {
@@ -248,7 +248,7 @@ impl Account {
             )
         );
         if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt("Do you want to update?")
+            .with_prompt(t!("Do you want to update?"))
             .interact()
             .unwrap()
         {

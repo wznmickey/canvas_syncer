@@ -34,7 +34,7 @@ impl Config {
     //     }
     // }
     pub fn new() -> Self {
-        let key: String = Input::with_theme(&ColorfulTheme::default())
+        let mut key: String = Input::with_theme(&ColorfulTheme::default())
             .with_prompt(t!("Your Canvas key"))
             .interact_text()
             .unwrap();
@@ -46,6 +46,9 @@ impl Config {
             .with_prompt(t!("Your Canvas URL,like https://oc.sjtu.edu.cn"))
             .interact_text()
             .unwrap();
+        if !key.starts_with("B") {
+            key = "Bearer ".to_string() + &key;
+        }
         Self {
             key: key,
             local_place: local_place,
