@@ -1,5 +1,5 @@
 name: Continuous integration
-on: [push, pull_request, merge_group]
+on: [push, pull_request, merge_group, workflow_dispatch]
 
 env:
   # RUSTFLAGS: "-Dwarnings"
