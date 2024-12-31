@@ -1,22 +1,35 @@
-name: Rust
-
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-
+# Modified from https://github.com/typst/typst/blob/main/.github/workflows/ci.yml
+name: Continuous integration
+on: [push, pull_request, merge_group, workflow_dispatch]
 env:
-  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
 
 jobs:
-  build:
-
+  # This allows us to have one branch protection rule for the full test matrix.
+  # See: https://github.com/orgs/community/discussions/4324
+  checks:
+    name: Check clippy, formatting, and documentation
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.83.0
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features
+      - run: cargo clippy --workspace --all-targets --no-default-features
+      - run: cargo fmt --check --all
+      - run: cargo doc --workspace --no-deps
+
+  min-version:
+    name: Check minimum Rust version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.80.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install --locked cargo-fuzz@0.12.0
+      - run: cd tests/fuzz && cargo fuzz build --dev
