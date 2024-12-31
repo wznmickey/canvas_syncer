@@ -1,5 +1,4 @@
 use crate::config::*;
-use crate::course;
 use crate::course::*;
 use crate::download::*;
 use crate::filter::object_filter_check;
@@ -177,7 +176,7 @@ impl Account {
     }
     pub fn download_files(&self) -> () {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let msg = rt.block_on(self.download_files_helper());
+        rt.block_on(self.download_files_helper());
     }
     async fn download_files_helper(&self) -> () {
         // for file in &self.need_download_files {
@@ -276,8 +275,14 @@ impl Account {
                     .borrow()
                     .my_parent_path
                     .join(&file.borrow().display_name);
-                fs::copy(my_full_path_new, my_full_path_old);
-
+                let res = fs::copy(my_full_path_new, my_full_path_old);
+                match res {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("In updating[1] : {e}");
+                        return;
+                    }
+                }
                 self.remote_data
                     .download_file(
                         &file.borrow().my_parent_path,

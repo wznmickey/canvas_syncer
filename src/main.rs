@@ -48,12 +48,12 @@ fn main() {
             // x = account::Account::new("./config.json");
         }
     }
-    let mut accV: Vec<Account> = Vec::new();
+    let mut acc_v: Vec<Account> = Vec::new();
     for config in c {
-        accV.push(Account::new(config));
+        acc_v.push(Account::new(config));
     }
     // let mut haddles: Vec<JoinHandle<()>> = Vec::new();
-    for mut x in accV {
+    for mut x in acc_v {
         // let handle = thread::spawn(move || {
         println!("{}", t!("Get folders list from canvas..."));
         x.get_folders();

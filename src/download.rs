@@ -186,7 +186,7 @@ impl RemoteData {
         size: u64,
     ) -> () {
         let mut buf: BufWriter<File>;
-        let permit = self.sem.acquire_many(50).await.unwrap();
+        let _permit = self.sem.acquire_many(50).await.unwrap();
         match tokio::fs::File::create(path.join(file_name.to_string() + ".temp")).await {
             Err(e) => {
                 println!("In creating {file_name} : {e}");
@@ -203,10 +203,10 @@ impl RemoteData {
             .with_key("eta", |state: &ProgressState, w: &mut dyn std::fmt::Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
             .progress_chars("#>-"));
         mpb.set_message(format!("In {:?}: {file_name}", path));
-        let mut length = 0;
         match response {
             Ok(mut temp) => {
-                while let chunk = temp.chunk().await {
+                loop {
+                    let chunk = temp.chunk().await;
                     match chunk {
                         Ok(chunk) => match chunk {
                             None => {
@@ -214,10 +214,16 @@ impl RemoteData {
                                 break;
                             }
                             Some(chunk) => {
-                                buf.write(&chunk.slice(0..chunk.len())).await;
+                                let res = buf.write(&chunk.slice(0..chunk.len())).await;
+                                match res {
+                                    Err(e) => {
+                                        println!("In writing[1] {file_name} : {e}");
+                                        return;
+                                    }
+                                    Ok(_) => {}
+                                }
                                 pb.inc(chunk.len() as u64);
                                 mpb.inc(chunk.len() as u64);
-                                length += chunk.len();
                             }
                         },
                         Err(e) => {
@@ -231,16 +237,18 @@ impl RemoteData {
                     Err(e) => println!("In downloading[2] {file_name} : {e}"),
                     Ok(_) => {}
                 }
-                // match {}
-                // println!("{:?} {:?} {:?}", temp, length, file_name);
-                fs::rename(
+                let res = fs::rename(
                     path.join(file_name.to_string() + ".temp"),
                     path.join(file_name.to_string()),
                 );
+                match res {
+                    Err(e) => println!("In downloading[3] {file_name} : {e}"),
+                    Ok(_) => {}
+                }
                 pb.set_message(format!("{file_name} done"));
                 mpb.finish_and_clear();
             }
-            Err(e) => println!("In downloading[3] {file_name} : {e}"),
+            Err(e) => println!("In downloading[4] {file_name} : {e}"),
         }
     }
 }
