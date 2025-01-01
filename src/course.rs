@@ -47,6 +47,16 @@ pub struct Folder {
 }
 impl GetFromJson<Folder, Rc<RefCell<Course>>, i32> for Folder {
     fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Folder> {
+        if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
+            println!(
+                "{}",
+                t!(
+                    "Folder %{name} is locked, skip it",
+                    name = x["display_name"].as_str()?
+                )
+            );
+            return None;
+        }
         Some(Folder {
             id: x["id"].as_i64()?,
             name: x["name"].as_str()?.to_string(),
@@ -75,6 +85,16 @@ pub struct CourseFile {
 impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
     fn get_from_json(x: &Value, f: Rc<RefCell<Folder>>, path: PathBuf) -> Option<CourseFile> {
         let temp = x["display_name"].as_str()?.to_string();
+        if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
+            println!(
+                "{}",
+                t!(
+                    "File %{name} is locked, skip it",
+                    name = x["display_name"].as_str()?
+                )
+            );
+            return None;
+        }
         Some(CourseFile {
             id: x["id"].as_i64()?,
             my_parent_path: {

@@ -1,3 +1,4 @@
+_version: 2
 Create folders...:
   en: 'Crwate folders...'
   zh: '创建文件夹...'
@@ -40,7 +41,6 @@ Your Canvas URL,like https://oc.sjtu.edu.cn:
 Your Canvas key:
   en: Your Canvas key
   zh: 你的Canvas key
-_version: 2
 'download size: %{size} MiB':
   en: 'download size: %{size} MiB'
   zh: '下载大小: %{size} MiB'
@@ -53,4 +53,9 @@ Do you want to download?:
 Do you want to update?:
   en: Do you want to update?
   zh: 你想要更新吗？
-
+File %{name} is locked, skip it:
+  en: File %{name} is locked, skip it
+  zh: 文件 %{name} 被锁定，跳过
+Folder %{name} is locked, skip it:
+  en: Folder %{name} is locked, skip it
+  zh: 文件夹 %{name} 被锁定，跳过
