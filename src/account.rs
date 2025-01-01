@@ -264,14 +264,7 @@ impl Account {
                 let display_name = file.borrow().display_name.clone();
                 let size = file.borrow().size;
                 self.remote_data
-                    .download_file(
-                        &my_parent_path,
-                        &url,
-                        &display_name,
-                        &pb,
-                        &m,
-                        size,
-                    )
+                    .download_file(&my_parent_path, &url, &display_name, &pb, &m, size)
                     .await;
             }));
             result.await;

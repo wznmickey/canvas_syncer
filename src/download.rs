@@ -223,12 +223,16 @@ impl RemoteData {
                     }
                 }
                 let temp = buf.flush().await;
-                if let Err(e) = temp { println!("In downloading[2] {file_name} : {e}") }
+                if let Err(e) = temp {
+                    println!("In downloading[2] {file_name} : {e}")
+                }
                 let res = fs::rename(
                     path.join(file_name.to_string() + ".temp"),
                     path.join(file_name),
                 );
-                if let Err(e) = res { println!("In downloading[3] {file_name} : {e}") }
+                if let Err(e) = res {
+                    println!("In downloading[3] {file_name} : {e}")
+                }
                 pb.set_message(format!("{file_name} done"));
                 mpb.finish_and_clear();
             }
