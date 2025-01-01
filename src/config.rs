@@ -15,7 +15,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn print(&self) -> () {
+    pub fn print(&self) {
         println!(
             "local_place={:?},canvas_url={:?},{:?}",
             self.local_place, self.canvas_url, self.filters,
@@ -26,13 +26,6 @@ impl Config {
         let reader = BufReader::new(file);
         serde_json::from_reader(reader).expect("Error while reading config file")
     }
-    // pub fn new(key: &str, local_place: &str, canvas_url: &str) -> Self {
-    //     Self {
-    //         key: key.to_string(),
-    //         local_place: local_place.to_string(),
-    //         canvas_url: canvas_url.to_string(),
-    //     }
-    // }
     pub fn new() -> Self {
         let mut key: String = Input::with_theme(&ColorfulTheme::default())
             .with_prompt(t!("Your Canvas key"))
@@ -50,9 +43,9 @@ impl Config {
             key = "Bearer ".to_string() + &key;
         }
         Self {
-            key: key,
-            local_place: local_place,
-            canvas_url: canvas_url,
+            key,
+            local_place,
+            canvas_url,
             allow_term: true,
             filters: None,
         }
@@ -61,7 +54,7 @@ impl Config {
         let mut temp = std::fs::File::create(str).expect("Wrong in creating the config file");
         let vec = vec![self];
         let data: String = serde_json::to_string(&vec).expect("Wrong in creating the config file");
-        temp.write(data.as_bytes())
+        temp.write_all(data.as_bytes())
             .expect("Wrong in creating the config file");
     }
 }

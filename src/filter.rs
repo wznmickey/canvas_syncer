@@ -44,54 +44,33 @@ pub struct Filters {
 // false -> Deny
 pub fn object_filter_check(f: &ObjectFilter, id: i64, name: &String) -> bool {
     let mut default_setting = "allow";
-    match f.default {
-        Some(ref x) => default_setting = x,
-        None => {}
+    if let Some(ref x) = f.default {
+        default_setting = x
     }
     if default_setting == "deny" {
-        match f.id {
-            Some(ref x) => {
-                if x.allows.is_some() {
-                    if x.allows.as_ref().unwrap().contains(&id) {
-                        return true;
-                    }
-                }
+        if let Some(ref x) = f.id {
+            if x.allows.is_some() && x.allows.as_ref().unwrap().contains(&id) {
+                return true;
             }
-            None => {}
         };
-        match f.name {
-            Some(ref x) => {
-                if x.allows.is_some() {
-                    if x.allows.as_ref().unwrap().contains(&name) {
-                        return true;
-                    }
-                }
+        if let Some(ref x) = f.name {
+            if x.allows.is_some() && x.allows.as_ref().unwrap().contains(name) {
+                return true;
             }
-            None => {}
         };
         return false;
     }
 
     if default_setting == "allow" {
-        match f.id {
-            Some(ref x) => {
-                if x.denies.is_some() {
-                    if x.allows.as_ref().unwrap().contains(&id) {
-                        return false;
-                    }
-                }
+        if let Some(ref x) = f.id {
+            if x.denies.is_some() && x.allows.as_ref().unwrap().contains(&id) {
+                return false;
             }
-            None => {}
         };
-        match f.name {
-            Some(ref x) => {
-                if x.allows.is_some() {
-                    if x.denies.as_ref().unwrap().contains(&name) {
-                        return false;
-                    }
-                }
+        if let Some(ref x) = f.name {
+            if x.allows.is_some() && x.denies.as_ref().unwrap().contains(name) {
+                return false;
             }
-            None => {}
         };
         return true;
     }

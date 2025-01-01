@@ -38,15 +38,13 @@ fn main() {
     if let Some(config) = args.config.as_deref() {
         c = config::Config::read_file(config);
         // x = account::Account::new(config);
+    } else if fs::metadata("./config.json").is_ok() {
+        c = config::Config::read_file("./config.json");
     } else {
-        if fs::metadata("./config.json").is_ok() {
-            c = config::Config::read_file("./config.json");
-        } else {
-            init_config();
-            c = config::Config::read_file("./config.json");
+        init_config();
+        c = config::Config::read_file("./config.json");
 
-            // x = account::Account::new("./config.json");
-        }
+        // x = account::Account::new("./config.json");
     }
     let mut acc_v: Vec<Account> = Vec::new();
     for config in c {

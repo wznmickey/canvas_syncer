@@ -54,7 +54,6 @@ impl RemoteData {
                     response = body;
                 }
             }
-            // println!("{:?}",response.headers());
             let temp: f64 = response
                 .headers()
                 .get("x-rate-limit-remaining")
@@ -96,7 +95,7 @@ impl RemoteData {
                 .unwrap()
                 .contains("rel=\"next\"")
             {
-                page_num = page_num + 1;
+                page_num += 1;
                 ans.push(response);
             } else {
                 ans.push(response);
@@ -114,20 +113,15 @@ impl RemoteData {
         let mut ans = Vec::new();
         let responses = self.get_remote_resource(st);
         for response in responses.await {
-            let result: Value;
-
-            match response.json().await.ok() {
+            let result: Value = match response.json().await.ok() {
                 None => continue,
-                Some(temp) => {
-                    result = temp;
-                }
-            }
+                Some(temp) => temp,
+            };
             match result.as_array() {
                 None => continue,
                 Some(result) => {
                     for i in result {
                         let item = T::get_from_json(i, a.clone(), b.clone());
-                        // println!("course={course:?}");
                         match item {
                             None => continue,
                             Some(item) => {
@@ -166,10 +160,9 @@ impl RemoteData {
         folder: Rc<RefCell<Folder>>,
         path: PathBuf,
     ) -> Vec<Rc<RefCell<CourseFile>>> {
-        let url = &folder.borrow().filelink;
-        // println!("{url}");
+        let url = &folder.borrow().filelink.clone();
         self.get_remote_json_list::<Rc<RefCell<Folder>>, PathBuf, CourseFile>(
-            &url,
+            url,
             folder.clone(),
             path,
         )
@@ -184,7 +177,7 @@ impl RemoteData {
         pb: &ProgressBar,
         m: &MultiProgress,
         size: u64,
-    ) -> () {
+    ) {
         let mut buf: BufWriter<File>;
         let _permit = self.sem.acquire_many(50).await.unwrap();
         match tokio::fs::File::create(path.join(file_name.to_string() + ".temp")).await {
@@ -215,12 +208,9 @@ impl RemoteData {
                             }
                             Some(chunk) => {
                                 let res = buf.write(&chunk.slice(0..chunk.len())).await;
-                                match res {
-                                    Err(e) => {
-                                        println!("In writing[1] {file_name} : {e}");
-                                        return;
-                                    }
-                                    Ok(_) => {}
+                                if let Err(e) = res {
+                                    println!("In writing[1] {file_name} : {e}");
+                                    return;
                                 }
                                 pb.inc(chunk.len() as u64);
                                 mpb.inc(chunk.len() as u64);
@@ -233,18 +223,12 @@ impl RemoteData {
                     }
                 }
                 let temp = buf.flush().await;
-                match temp {
-                    Err(e) => println!("In downloading[2] {file_name} : {e}"),
-                    Ok(_) => {}
-                }
+                if let Err(e) = temp { println!("In downloading[2] {file_name} : {e}") }
                 let res = fs::rename(
                     path.join(file_name.to_string() + ".temp"),
-                    path.join(file_name.to_string()),
+                    path.join(file_name),
                 );
-                match res {
-                    Err(e) => println!("In downloading[3] {file_name} : {e}"),
-                    Ok(_) => {}
-                }
+                if let Err(e) = res { println!("In downloading[3] {file_name} : {e}") }
                 pb.set_message(format!("{file_name} done"));
                 mpb.finish_and_clear();
             }

@@ -32,40 +32,29 @@ impl Account {
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
         let mut course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
 
-        match &config.filters {
-            Some(x) => match &x.term_filter {
-                Some(y) => match &y.object_filter {
-                    Some(z) => {
-                        course = course
-                            .iter()
-                            .filter(|&x| {
-                                object_filter_check(&z, x.borrow().term_id, &x.borrow().term_name)
-                            })
-                            .map(|x| Rc::clone(x))
-                            .collect();
-                    }
-                    None => {}
-                },
-                None => {}
-            },
-            _ => {}
+        if let Some(z) = &config
+            .filters
+            .as_ref()
+            .and_then(|x| x.term_filter.as_ref())
+            .and_then(|y| y.object_filter.as_ref())
+        {
+            course = course
+                .iter()
+                .filter(|&x| object_filter_check(z, x.borrow().term_id, &x.borrow().term_name))
+                .map(Rc::clone)
+                .collect();
         }
-
-        match &config.filters {
-            Some(x) => match &x.course_filter {
-                Some(y) => match &y.object_filter {
-                    Some(z) => {
-                        course = course
-                            .iter()
-                            .filter(|&x| object_filter_check(&z, x.borrow().id, &x.borrow().name))
-                            .map(|x| Rc::clone(x))
-                            .collect();
-                    }
-                    None => {}
-                },
-                None => {}
-            },
-            _ => {}
+        if let Some(z) = &config
+            .filters
+            .as_ref()
+            .and_then(|x| x.course_filter.as_ref())
+            .and_then(|y| y.object_filter.as_ref())
+        {
+            course = course
+                .iter()
+                .filter(|x| object_filter_check(z, x.borrow().id, &x.borrow().name))
+                .map(Rc::clone)
+                .collect();
         }
         course.iter().for_each(|x| {
             let temp = x.borrow().term_name.replace("/", "_").replace("\\", "_");
@@ -86,7 +75,7 @@ impl Account {
             update_size: 0,
         }
     }
-    pub fn get_folders(&mut self) -> () {
+    pub fn get_folders(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.folders = rt.block_on(self.get_folders_helper());
     }
@@ -94,7 +83,7 @@ impl Account {
     pub async fn get_folders_helper(&self) -> Vec<Rc<RefCell<Folder>>> {
         let pb = &ProgressBar::new(self.course.len() as u64);
         let result = join_all(self.course.iter().map(|course| async move {
-            let temp = self.remote_data.get_folder_list(Rc::clone(&course)).await;
+            let temp = self.remote_data.get_folder_list(Rc::clone(course)).await;
             pb.inc(1);
             temp
         }))
@@ -105,7 +94,7 @@ impl Account {
         pb.finish_with_message("done");
         result
     }
-    pub fn create_folders(&self) -> () {
+    pub fn create_folders(&self) {
         let pb = ProgressBar::new(self.folders.len() as u64);
         for folder in &self.folders {
             let folder = folder.borrow();
@@ -129,7 +118,7 @@ impl Account {
         pb.finish_with_message("done");
     }
 
-    pub fn get_files(&mut self) -> () {
+    pub fn get_files(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.files = rt.block_on(self.get_files_helper());
     }
@@ -146,7 +135,7 @@ impl Account {
             };
             let temp = self
                 .remote_data
-                .get_file_list(Rc::clone(&folder), (path).into())
+                .get_file_list(Rc::clone(folder), (path).into())
                 .await;
             pb.inc(1);
             temp
@@ -158,7 +147,7 @@ impl Account {
         pb.finish_with_message("done");
         result
     }
-    pub fn calculate_files(&mut self) -> () {
+    pub fn calculate_files(&mut self) {
         for file in &self.files {
             let temp = file.borrow().get_status();
             match temp {
@@ -174,15 +163,12 @@ impl Account {
             }
         }
     }
-    pub fn download_files(&self) -> () {
+    pub fn download_files(&self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(self.download_files_helper());
     }
-    async fn download_files_helper(&self) -> () {
-        // for file in &self.need_download_files {
-        //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
-        // }
-        if self.need_download_files.len() == 0 {
+    async fn download_files_helper(&self) {
+        if self.need_download_files.is_empty() {
             println!("{}", t!("No files need to download"));
             return;
         }
@@ -207,19 +193,13 @@ impl Account {
             .progress_chars("#>-"));
 
             let result = join_all(self.need_download_files.iter().map(|file| async {
-                // for file in &self.need_download_files {
-                // println!("start downloading : {:?}", file.my_full_path);
+                let my_parent_path = &file.borrow().my_parent_path.clone();
+                let url = &file.borrow().url.clone();
+                let display_name = &file.borrow().display_name.clone();
+                let size = file.borrow().size;
                 self.remote_data
-                    .download_file(
-                        &file.borrow().my_parent_path,
-                        file.borrow().url.as_str(),
-                        &file.borrow().display_name,
-                        &pb,
-                        &m,
-                        file.borrow().size,
-                    )
+                    .download_file(my_parent_path, url, display_name, &pb, &m, size)
                     .await;
-                // println!("finished: {:?}", file.my_full_path);
             }));
             result.await;
             pb.finish_with_message("All downloaded");
@@ -227,15 +207,12 @@ impl Account {
             println!("{}", t!("Do not download"));
         }
     }
-    pub fn update_files(&self) -> () {
+    pub fn update_files(&self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(self.update_files_helper())
     }
-    async fn update_files_helper(&self) -> () {
-        // for file in &self.need_update_files {
-        //     println!("In {:?}: {}", file.my_parent_path, file.display_name);
-        // }
-        if self.need_update_files.len() == 0 {
+    async fn update_files_helper(&self) {
+        if self.need_update_files.is_empty() {
             println!("{}", t!("No files need to update"));
             return;
         }
@@ -260,7 +237,6 @@ impl Account {
             .progress_chars("#>-"));
 
             let result = join_all(self.need_update_files.iter().map(|file| async {
-                // println!("start updating : {:?}", file.my_full_path);
                 let x = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
@@ -283,17 +259,20 @@ impl Account {
                         return;
                     }
                 }
+                let my_parent_path = file.borrow().my_parent_path.clone();
+                let url = file.borrow().url.clone();
+                let display_name = file.borrow().display_name.clone();
+                let size = file.borrow().size;
                 self.remote_data
                     .download_file(
-                        &file.borrow().my_parent_path,
-                        file.borrow().url.as_str(),
-                        &file.borrow().display_name,
+                        &my_parent_path,
+                        &url,
+                        &display_name,
                         &pb,
                         &m,
-                        file.borrow().size,
+                        size,
                     )
                     .await;
-                // println!("finished: {:?}", file.my_full_path);
             }));
             result.await;
             pb.finish_with_message("all updated");

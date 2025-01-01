@@ -16,6 +16,7 @@ pub trait GetFromJson<T, A, B> {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Course {
     pub id: i64,
     pub name: String,
@@ -36,6 +37,7 @@ impl GetFromJson<Course, i32, i32> for Course {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Folder {
     id: i64,
     pub name: String,
@@ -56,6 +58,7 @@ impl GetFromJson<Folder, Rc<RefCell<Course>>, i32> for Folder {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct CourseFile {
     id: i64,
     pub display_name: String,
@@ -75,9 +78,7 @@ impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
         Some(CourseFile {
             id: x["id"].as_i64()?,
             my_parent_path: {
-                path.join(
-                    (&f.borrow().course.borrow().name).to_string() + " " + &f.borrow().fullname,
-                )
+                path.join(f.borrow().course.borrow().name.to_string() + " " + &f.borrow().fullname)
             },
             display_name: temp,
             filename: x["filename"].as_str()?.to_string(),
@@ -115,13 +116,11 @@ impl CourseFile {
                     self.updated_time,
                 );
                 if newest_local_time < newest_remote_time {
-                    // println!("a");
                     return FileStatus::NeedUpdate;
                 }
                 let local_size = y.len();
                 let remote_size = self.size;
                 if local_size != remote_size {
-                    // println!("{}: {} {}", self.display_name,local_size, remote_size);
                     return FileStatus::NeedUpdate;
                 }
                 FileStatus::Latest
