@@ -1,3 +1,4 @@
+use crate::util::get_file_link_from_html;
 use chrono::DateTime;
 use chrono::Utc;
 use serde_json::Value;
@@ -66,6 +67,37 @@ impl GetFromJson<Folder, Rc<RefCell<Course>>, i32> for Folder {
         })
     }
 }
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct Assignment {
+    pub id: i64,
+    pub name: String,
+    pub course: Rc<RefCell<Course>>,
+    pub description: String,
+    pub filelink: Vec<String>,
+}
+impl GetFromJson<Assignment, Rc<RefCell<Course>>, i32> for Assignment {
+    fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Assignment> {
+        if x["locked_for_user"].as_bool()? {
+            println!(
+                "{}",
+                t!(
+                    "Assignment %{name} is locked, skip it",
+                    name = x["display_name"].as_str()?
+                )
+            );
+            return None;
+        }
+        let filelink = get_file_link_from_html(x["description"].as_str()?);
+        Some(Assignment {
+            id: x["id"].as_i64()?,
+            name: x["name"].as_str()?.to_string(),
+            course: c,
+            description: x["description"].as_str()?.to_string(),
+            filelink,
+        })
+    }
+}
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -74,7 +106,7 @@ pub struct CourseFile {
     pub display_name: String,
     pub filename: String,
     pub url: String,
-    pub folder: Rc<RefCell<Folder>>,
+    // pub folder: Rc<RefCell<Folder>>,
     pub content_type: String,
     pub size: u64,
     pub created_time: DateTime<Utc>,
@@ -98,11 +130,50 @@ impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
         Some(CourseFile {
             id: x["id"].as_i64()?,
             my_parent_path: {
-                path.join(f.borrow().course.borrow().name.to_string() + " " + &f.borrow().fullname)
+                path.join(f.borrow().course.borrow().name.to_string())
+                    .join(&f.borrow().fullname)
             },
             display_name: temp,
             filename: x["filename"].as_str()?.to_string(),
-            folder: f.clone(),
+            // folder: f.clone(),
+            url: x["url"].as_str()?.to_string(),
+            content_type: x["content-type"].as_str()?.to_string(),
+            size: x["size"].as_u64()?,
+            created_time: DateTime::parse_from_str(x["created_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+            updated_time: DateTime::parse_from_str(x["updated_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+            modified_time: DateTime::parse_from_str(x["modified_at"].as_str()?, "%+")
+                .ok()?
+                .to_utc(),
+        })
+    }
+}
+
+impl GetFromJson<CourseFile, Rc<RefCell<Assignment>>, PathBuf> for CourseFile {
+    fn get_from_json(x: &Value, f: Rc<RefCell<Assignment>>, path: PathBuf) -> Option<CourseFile> {
+        let temp = x["display_name"].as_str()?.to_string();
+        if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
+            println!(
+                "{}",
+                t!(
+                    "File %{name} is locked, skip it",
+                    name = x["display_name"].as_str()?
+                )
+            );
+            return None;
+        }
+        Some(CourseFile {
+            id: x["id"].as_i64()?,
+            my_parent_path: {
+                path.join(f.borrow().course.borrow().name.to_string())
+                    .join(&f.borrow().name)
+            },
+            display_name: temp,
+            filename: x["filename"].as_str()?.to_string(),
+            // folder: None,
             url: x["url"].as_str()?.to_string(),
             content_type: x["content-type"].as_str()?.to_string(),
             size: x["size"].as_u64()?,

@@ -18,6 +18,7 @@ pub struct Account {
     remote_data: RemoteData,
     course: Vec<Rc<RefCell<Course>>>,
     folders: Vec<Rc<RefCell<Folder>>>,
+    assignmnets: Vec<Rc<RefCell<Assignment>>>,
     files: Vec<Rc<RefCell<CourseFile>>>,
     need_update_files: Vec<Rc<RefCell<CourseFile>>>,
     need_download_files: Vec<Rc<RefCell<CourseFile>>>,
@@ -69,11 +70,33 @@ impl Account {
             course,
             folders: Vec::new(),
             files: Vec::new(),
+            assignmnets: Vec::new(),
             need_download_files: Vec::new(),
             need_update_files: Vec::new(),
             download_size: 0,
             update_size: 0,
         }
+    }
+    pub fn get_assignments(&mut self) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.assignmnets = rt.block_on(self.get_assignments_helper());
+    }
+    pub async fn get_assignments_helper(&self) -> Vec<Rc<RefCell<Assignment>>> {
+        let pb = &ProgressBar::new(self.course.len() as u64);
+        let result = join_all(self.course.iter().map(|course| async move {
+            let temp = self
+                .remote_data
+                .get_assignment_list(Rc::clone(course))
+                .await;
+            pb.inc(1);
+            temp
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+        pb.finish_with_message("done");
+        result
     }
     pub fn get_folders(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -103,13 +126,15 @@ impl Account {
                 create_dir_all(
                     Path::new(&self.config.local_place)
                         .join(&folder.course.borrow().term_name)
-                        .join(folder.course.borrow().name.clone() + " " + &folder.fullname),
+                        .join(folder.course.borrow().name.clone())
+                        .join(&folder.fullname),
                 )
                 .unwrap();
             } else {
                 create_dir_all(
                     Path::new(&self.config.local_place)
-                        .join(folder.course.borrow().name.clone() + " " + &folder.fullname),
+                        .join(folder.course.borrow().name.clone())
+                        .join(&folder.fullname),
                 )
                 .unwrap();
             }
@@ -117,7 +142,30 @@ impl Account {
         }
         pb.finish_with_message("done");
     }
-
+    pub fn create_assignments(&self) {
+        let pb = ProgressBar::new(self.assignmnets.len() as u64);
+        for assignment in &self.assignmnets {
+            let assignment = assignment.borrow();
+            if self.config.allow_term {
+                create_dir_all(
+                    Path::new(&self.config.local_place)
+                        .join(&assignment.course.borrow().term_name)
+                        .join(assignment.course.borrow().name.clone())
+                        .join(&assignment.name),
+                )
+                .unwrap();
+            } else {
+                create_dir_all(
+                    Path::new(&self.config.local_place)
+                        .join(assignment.course.borrow().name.clone())
+                        .join(&assignment.name),
+                )
+                .unwrap();
+            }
+            pb.inc(1);
+        }
+        pb.finish_with_message("done");
+    }
     pub fn get_files(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.files = rt.block_on(self.get_files_helper());
@@ -125,27 +173,55 @@ impl Account {
 
     async fn get_files_helper(&self) -> Vec<Rc<RefCell<CourseFile>>> {
         let pb = &ProgressBar::new(self.folders.len() as u64);
-        let result = join_all(self.folders.iter().map(|folder| async move {
-            let path = if !self.config.allow_term {
-                self.config.local_place.clone()
-            } else {
-                self.config.local_place.clone()
-                    + "/"
-                    + folder.borrow().course.borrow().term_name.as_str()
-            };
-            let temp = self
-                .remote_data
-                .get_file_list(Rc::clone(folder), (path).into())
-                .await;
-            pb.inc(1);
-            temp
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .collect();
+        let mut result_a: Vec<Rc<RefCell<CourseFile>>> =
+            join_all(self.folders.iter().map(|folder| async move {
+                let path = if !self.config.allow_term {
+                    self.config.local_place.clone()
+                } else {
+                    self.config.local_place.clone()
+                        + "/"
+                        + folder.borrow().course.borrow().term_name.as_str()
+                };
+                let temp = self
+                    .remote_data
+                    .get_file_list_from_folder(Rc::clone(folder), (path).into())
+                    .await;
+                pb.inc(1);
+                temp
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect();
         pb.finish_with_message("done");
-        result
+        // result
+        let pb = &ProgressBar::new(self.folders.len() as u64);
+        let mut result_b: Vec<Rc<RefCell<CourseFile>>> =
+            join_all(self.assignmnets.iter().map(|assignment| async move {
+                let path = if !self.config.allow_term {
+                    self.config.local_place.clone()
+                } else {
+                    self.config.local_place.clone()
+                        + "/"
+                        + assignment.borrow().course.borrow().term_name.as_str()
+                };
+                let temp = self
+                    .remote_data
+                    .get_file_list_from_assignment(Rc::clone(assignment), (path).into())
+                    .await;
+                pb.inc(1);
+                temp
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect();
+        pb.finish_with_message("done");
+
+        // result
+        // result_a.append(&mut result_b);
+        result_a.append(result_b.as_mut());
+        result_a
     }
     pub fn calculate_files(&mut self) {
         for file in &self.files {

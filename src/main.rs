@@ -3,6 +3,7 @@ mod config;
 mod course;
 mod download;
 mod filter;
+mod util;
 use crate::{account::Account, config::Config};
 use clap::Parser;
 use std::fs;
@@ -55,8 +56,11 @@ fn main() {
         // let handle = thread::spawn(move || {
         println!("{}", t!("Get folders list from canvas..."));
         x.get_folders();
+        println!("{}", t!("Get assignments list from canvas..."));
+        x.get_assignments();
         println!("{}", t!("Create folders..."));
         x.create_folders();
+        x.create_assignments();
         println!("{}", t!("Get files list from canvas..."));
         x.get_files();
         x.calculate_files();

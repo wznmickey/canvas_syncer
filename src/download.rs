@@ -77,26 +77,25 @@ impl RemoteData {
             if response.headers().get("status").unwrap().to_str().unwrap() == "401 Unauthorized" {
                 return ans;
             }
-
             if response.headers().get("status").unwrap().to_str().unwrap() == "403 Forbidden" {
                 return ans;
             }
-
+            if response.headers().get("status").unwrap().to_str().unwrap() == "404 Not Found" {
+                return ans;
+            }
             if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
                 println!("{:?} in {:?}", response.headers(), url);
                 sleep(Duration::from_millis(1000)).await;
                 continue;
             }
-            if response
-                .headers()
-                .get("link")
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .contains("rel=\"next\"")
-            {
-                page_num += 1;
-                ans.push(response);
+            if let Some(link) = response.headers().get("link") {
+                if link.to_str().unwrap().contains("rel=\"next\"") {
+                    page_num += 1;
+                    ans.push(response);
+                } else {
+                    ans.push(response);
+                    return ans;
+                }
             } else {
                 ans.push(response);
                 return ans;
@@ -118,7 +117,16 @@ impl RemoteData {
                 Some(temp) => temp,
             };
             match result.as_array() {
-                None => continue,
+                None => {
+                    let item = T::get_from_json(&result, a.clone(), b.clone());
+                    match item {
+                        None => continue,
+                        Some(item) => {
+                            let rc = Rc::new(RefCell::new(item));
+                            ans.push(rc);
+                        }
+                    }
+                }
                 Some(result) => {
                     for i in result {
                         let item = T::get_from_json(i, a.clone(), b.clone());
@@ -133,7 +141,6 @@ impl RemoteData {
                 }
             }
         }
-
         ans
     }
     pub fn get_course_list(&self) -> Vec<Rc<RefCell<Course>>> {
@@ -143,6 +150,18 @@ impl RemoteData {
     async fn get_course_list_helper(&self) -> Vec<Rc<RefCell<Course>>> {
         let url = format!("{}/api/v1/courses?include[]=term", self.url);
         self.get_remote_json_list::<i32, i32, Course>(&url, 1, 1)
+            .await
+    }
+    pub async fn get_assignment_list(
+        &self,
+        course: Rc<RefCell<Course>>,
+    ) -> Vec<Rc<RefCell<Assignment>>> {
+        let url = format!(
+            "{}/api/v1/courses/{}/assignments?",
+            self.url,
+            course.borrow().id
+        );
+        self.get_remote_json_list::<Rc<RefCell<Course>>, i32, Assignment>(&url, course, 1)
             .await
     }
     pub async fn get_folder_list(&self, course: Rc<RefCell<Course>>) -> Vec<Rc<RefCell<Folder>>> {
@@ -155,7 +174,7 @@ impl RemoteData {
             .await
     }
 
-    pub async fn get_file_list(
+    pub async fn get_file_list_from_folder(
         &self,
         folder: Rc<RefCell<Folder>>,
         path: PathBuf,
@@ -168,7 +187,25 @@ impl RemoteData {
         )
         .await
     }
-
+    pub async fn get_file_list_from_assignment(
+        &self,
+        assignment: Rc<RefCell<Assignment>>,
+        path: PathBuf,
+    ) -> Vec<Rc<RefCell<CourseFile>>> {
+        let mut ans = Vec::new();
+        for i in assignment.borrow().filelink.clone() {
+            let url = i + "?"; // It is necessary to add a ?. Not sure why.
+            let mut tempans = self
+                .get_remote_json_list::<Rc<RefCell<Assignment>>, PathBuf, CourseFile>(
+                    &url,
+                    assignment.clone(),
+                    path.clone(),
+                )
+                .await;
+            ans.append(tempans.as_mut());
+        }
+        ans
+    }
     pub async fn download_file(
         &self,
         path: &Path,
