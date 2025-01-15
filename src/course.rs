@@ -130,7 +130,7 @@ impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
         Some(CourseFile {
             id: x["id"].as_i64()?,
             my_parent_path: {
-                path.join(f.borrow().course.borrow().name.to_string())
+                path.join(&f.borrow().course.borrow().name)
                     .join(&f.borrow().fullname)
             },
             display_name: temp,
@@ -168,7 +168,7 @@ impl GetFromJson<CourseFile, Rc<RefCell<Assignment>>, PathBuf> for CourseFile {
         Some(CourseFile {
             id: x["id"].as_i64()?,
             my_parent_path: {
-                path.join(f.borrow().course.borrow().name.to_string())
+                path.join(&f.borrow().course.borrow().name)
                     .join(&f.borrow().name)
             },
             display_name: temp,

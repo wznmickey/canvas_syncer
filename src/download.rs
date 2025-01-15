@@ -193,7 +193,8 @@ impl RemoteData {
         path: PathBuf,
     ) -> Vec<Rc<RefCell<CourseFile>>> {
         let mut ans = Vec::new();
-        for i in assignment.borrow().filelink.clone() {
+        let filelinks = assignment.borrow().filelink.clone();
+        for i in filelinks {
             let url = i + "?"; // It is necessary to add a ?. Not sure why.
             let mut tempans = self
                 .get_remote_json_list::<Rc<RefCell<Assignment>>, PathBuf, CourseFile>(
