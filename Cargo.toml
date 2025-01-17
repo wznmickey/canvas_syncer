@@ -1,6 +1,6 @@
 [package]
 name = "canvas_syncer"
-version = "0.4.4"
+version = "0.5.0"
 edition = "2021"
 description = "A syncer to Canvas LMS with files among courses"
 license = "MIT"
