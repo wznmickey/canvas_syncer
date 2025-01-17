@@ -5,6 +5,9 @@ use crate::course_file::*;
 use crate::download::*;
 use crate::filter::object_filter_check;
 use crate::folder::*;
+use crate::item::*;
+use crate::module::*;
+use crate::page::Page;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
 use std::cell::RefCell;
@@ -22,6 +25,9 @@ pub struct Account {
     course: Vec<Rc<RefCell<Course>>>,
     folders: Vec<Rc<RefCell<Folder>>>,
     assignmnets: Vec<Rc<RefCell<Assignment>>>,
+    modules: Vec<Rc<RefCell<Module>>>,
+    items: Vec<Rc<RefCell<Item>>>,
+    pages: Vec<Rc<RefCell<Page>>>,
     files: Vec<Rc<RefCell<CourseFile>>>,
     need_update_files: Vec<Rc<RefCell<CourseFile>>>,
     need_download_files: Vec<Rc<RefCell<CourseFile>>>,
@@ -74,6 +80,9 @@ impl Account {
             folders: Vec::new(),
             files: Vec::new(),
             assignmnets: Vec::new(),
+            modules: Vec::new(),
+            items: Vec::new(),
+            pages: Vec::new(),
             need_download_files: Vec::new(),
             need_update_files: Vec::new(),
             download_size: 0,
@@ -101,6 +110,67 @@ impl Account {
         pb.finish_with_message("done");
         result
     }
+
+    pub fn get_modules(&mut self) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.modules = rt.block_on(self.get_modules_helper());
+    }
+
+    pub async fn get_modules_helper(&self) -> Vec<Rc<RefCell<Module>>> {
+        let pb = &ProgressBar::new(self.course.len() as u64);
+        let result = join_all(self.course.iter().map(|course| async move {
+            let temp = self.remote_data.get_module_list(Rc::clone(course)).await;
+            pb.inc(1);
+            temp
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+        pb.finish_with_message("done");
+        result
+    }
+
+    pub fn get_items(&mut self) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.items = rt.block_on(self.get_items_helper());
+    }
+
+    pub async fn get_items_helper(&self) -> Vec<Rc<RefCell<Item>>> {
+        let pb = &ProgressBar::new(self.modules.len() as u64);
+        let result = join_all(self.modules.iter().map(|modules| async move {
+            let temp = self.remote_data.get_item_list(Rc::clone(modules)).await;
+            pb.inc(1);
+            temp
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+        pb.finish_with_message("done");
+        result
+    }
+
+    pub fn get_pages(&mut self) {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.pages = rt.block_on(self.get_pages_helper());
+    }
+
+    pub async fn get_pages_helper(&self) -> Vec<Rc<RefCell<Page>>> {
+        let pb = &ProgressBar::new(self.items.len() as u64);
+        let result = join_all(self.items.iter().map(|item| async move {
+            let temp = self.remote_data.get_page_list(Rc::clone(item)).await;
+            pb.inc(1);
+            temp
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
+        pb.finish_with_message("done");
+        result
+    }
+
     pub fn get_folders(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.folders = rt.block_on(self.get_folders_helper());
@@ -124,7 +194,6 @@ impl Account {
         let pb = ProgressBar::new(self.folders.len() as u64);
         for folder in &self.folders {
             let folder = folder.borrow();
-
             if self.config.allow_term {
                 create_dir_all(
                     Path::new(&self.config.local_place)
@@ -162,6 +231,52 @@ impl Account {
                     Path::new(&self.config.local_place)
                         .join(assignment.course.borrow().name.clone())
                         .join(&assignment.name),
+                )
+                .unwrap();
+            }
+            pb.inc(1);
+        }
+        pb.finish_with_message("done");
+    }
+    pub fn create_pages(&self) {
+        let pb = ProgressBar::new(self.pages.len() as u64);
+        for page in &self.pages {
+            let page = page.borrow();
+            if self.config.allow_term {
+                create_dir_all(
+                    Path::new(&self.config.local_place)
+                        .join(&page.item.borrow().module.borrow().course.borrow().term_name)
+                        .join(
+                            page.item
+                                .borrow()
+                                .module
+                                .borrow()
+                                .course
+                                .borrow()
+                                .name
+                                .clone(),
+                        )
+                        .join(&page.item.borrow().module.borrow().name)
+                        .join(&page.item.borrow().name)
+                        .join(&page.name),
+                )
+                .unwrap();
+            } else {
+                create_dir_all(
+                    Path::new(&self.config.local_place)
+                        .join(
+                            page.item
+                                .borrow()
+                                .module
+                                .borrow()
+                                .course
+                                .borrow()
+                                .name
+                                .clone(),
+                        )
+                        .join(&page.item.borrow().module.borrow().name)
+                        .join(&page.item.borrow().name)
+                        .join(&page.name),
                 )
                 .unwrap();
             }
@@ -220,10 +335,36 @@ impl Account {
             .flatten()
             .collect();
         pb.finish_with_message("done");
-
-        // result
-        // result_a.append(&mut result_b);
+        let mut result_c: Vec<Rc<RefCell<CourseFile>>> =
+            join_all(self.pages.iter().map(|page| async move {
+                let path = if !self.config.allow_term {
+                    self.config.local_place.clone()
+                } else {
+                    self.config.local_place.clone()
+                        + "/"
+                        + page
+                            .borrow()
+                            .item
+                            .borrow()
+                            .module
+                            .borrow()
+                            .course
+                            .borrow()
+                            .term_name
+                            .as_str()
+                };
+                let temp = self
+                    .remote_data
+                    .get_file_list_from_page(Rc::clone(page), (path).into())
+                    .await;
+                temp
+            }))
+            .await
+            .into_iter()
+            .flatten()
+            .collect();
         result_a.append(result_b.as_mut());
+        result_a.append(result_c.as_mut());
         result_a
     }
     pub fn calculate_files(&mut self) {

@@ -1,7 +1,12 @@
 use crate::assignment::*;
+use crate::course;
 use crate::course::*;
 use crate::course_file::*;
 use crate::folder::*;
+use crate::item::*;
+use crate::module::Module;
+use crate::module::*;
+use crate::page::*;
 use crate::util::GetFromJson;
 use indicatif::MultiProgress;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
@@ -168,6 +173,27 @@ impl RemoteData {
         self.get_remote_json_list::<Rc<RefCell<Course>>, i32, Assignment>(&url, course, 1)
             .await
     }
+
+    pub async fn get_module_list(&self, course: Rc<RefCell<Course>>) -> Vec<Rc<RefCell<Module>>> {
+        let url = format!(
+            "{}/api/v1/courses/{}/modules?",
+            self.url,
+            course.borrow().id
+        );
+        self.get_remote_json_list::<Rc<RefCell<Course>>, i32, Module>(&url, course, 1)
+            .await
+    }
+
+    pub async fn get_item_list(&self, module: Rc<RefCell<Module>>) -> Vec<Rc<RefCell<Item>>> {
+        let url = &module.borrow().itemline.clone();
+        self.get_remote_json_list::<Rc<RefCell<Module>>, i32, Item>(url, module, 1)
+            .await
+    }
+    pub async fn get_page_list(&self, item: Rc<RefCell<Item>>) -> Vec<Rc<RefCell<Page>>> {
+        let url = &item.borrow().url.clone();
+        self.get_remote_json_list::<Rc<RefCell<Item>>, i32, Page>(url, item, 1)
+            .await
+    }
     pub async fn get_folder_list(&self, course: Rc<RefCell<Course>>) -> Vec<Rc<RefCell<Folder>>> {
         let url = format!(
             "{}/api/v1/courses/{}/folders?",
@@ -204,6 +230,26 @@ impl RemoteData {
                 .get_remote_json_list::<Rc<RefCell<Assignment>>, PathBuf, CourseFile>(
                     &url,
                     assignment.clone(),
+                    path.clone(),
+                )
+                .await;
+            ans.append(tempans.as_mut());
+        }
+        ans
+    }
+    pub async fn get_file_list_from_page(
+        &self,
+        page: Rc<RefCell<Page>>,
+        path: PathBuf,
+    ) -> Vec<Rc<RefCell<CourseFile>>> {
+        let mut ans = Vec::new();
+        let filelinks = page.borrow().filelink.clone();
+        for i in filelinks {
+            let url: String = i + "?"; // It is necessary to add a ?. Not sure why.
+            let mut tempans = self
+                .get_remote_json_list::<Rc<RefCell<Page>>, PathBuf, CourseFile>(
+                    &url,
+                    page.clone(),
                     path.clone(),
                 )
                 .await;
