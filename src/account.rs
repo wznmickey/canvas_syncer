@@ -1,7 +1,10 @@
+use crate::assignment::*;
 use crate::config::*;
 use crate::course::*;
+use crate::course_file::*;
 use crate::download::*;
 use crate::filter::object_filter_check;
+use crate::folder::*;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
 use std::cell::RefCell;

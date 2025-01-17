@@ -1,13 +1,17 @@
 mod account;
+mod assignment;
 mod config;
 mod course;
+mod course_file;
 mod download;
 mod filter;
+mod folder;
 mod util;
 use crate::{account::Account, config::Config};
 use clap::Parser;
 use std::fs;
 use sys_locale::get_locale;
+mod module;
 #[macro_use]
 extern crate rust_i18n;
 rust_i18n::i18n!("locales");

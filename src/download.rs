@@ -1,4 +1,8 @@
+use crate::assignment::*;
 use crate::course::*;
+use crate::course_file::*;
+use crate::folder::*;
+use crate::util::GetFromJson;
 use indicatif::MultiProgress;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use reqwest::header;
