@@ -1,12 +1,4 @@
-use crate::assignment::*;
-use crate::course;
-use crate::course::*;
-use crate::course_file::*;
-use crate::folder::*;
-use crate::item::*;
-use crate::module::Module;
-use crate::module::*;
-use crate::page::*;
+use crate::structs::*;
 use crate::util::GetFromJson;
 use indicatif::MultiProgress;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};

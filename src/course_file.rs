@@ -1,6 +1,5 @@
-use crate::assignment::Assignment;
-use crate::folder::Folder;
-use crate::page::Page;
+use crate::structs::*;
+
 use crate::util::GetFromJson;
 use chrono::DateTime;
 use chrono::Utc;
@@ -9,6 +8,7 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::rc::Rc;
 use std::{fs, path::PathBuf};
+
 pub enum FileStatus {
     Latest,
     NeedUpdate,

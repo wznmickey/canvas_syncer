@@ -1,9 +1,9 @@
-use crate::course::Course;
-use crate::util::get_file_link_from_html;
-use crate::util::GetFromJson;
+use crate::structs::*;
+use crate::util::*;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct Assignment {

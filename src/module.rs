@@ -1,5 +1,4 @@
-use crate::course::Course;
-// use crate::util::get_file_link_from_html;
+use crate::structs::*;
 use crate::util::GetFromJson;
 use serde_json::Value;
 use std::cell::RefCell;

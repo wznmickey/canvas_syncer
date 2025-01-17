@@ -1,15 +1,10 @@
-use crate::assignment::*;
 use crate::config::*;
-use crate::course::*;
-use crate::course_file::*;
 use crate::download::*;
 use crate::filter::object_filter_check;
-use crate::folder::*;
-use crate::item::*;
-use crate::module::*;
-use crate::page::Page;
+use crate::structs::*;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
+use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 use std::cell::RefCell;
 use std::fmt::Write;
 use std::fs;
@@ -18,7 +13,6 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 pub struct Account {
     config: Config,
     remote_data: RemoteData,
@@ -335,6 +329,7 @@ impl Account {
             .flatten()
             .collect();
         pb.finish_with_message("done");
+        let pb = &ProgressBar::new(self.pages.len() as u64);
         let mut result_c: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.pages.iter().map(|page| async move {
                 let path = if !self.config.allow_term {
@@ -357,6 +352,7 @@ impl Account {
                     .remote_data
                     .get_file_list_from_page(Rc::clone(page), (path).into())
                     .await;
+                pb.inc(1);
                 temp
             }))
             .await

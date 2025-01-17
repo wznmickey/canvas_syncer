@@ -1,7 +1,4 @@
-use crate::course::Course;
-use crate::module::Module;
-// use crate::util::get_file_link_from_html;
-use crate::item::Item;
+use crate::structs::*;
 use crate::util::get_file_link_from_html;
 use crate::util::GetFromJson;
 use serde_json::Value;

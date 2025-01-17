@@ -1,4 +1,4 @@
-use crate::course::Course;
+use crate::structs::*;
 use crate::util::GetFromJson;
 use serde_json::Value;
 use std::cell::RefCell;
