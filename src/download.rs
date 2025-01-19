@@ -38,6 +38,7 @@ impl RemoteData {
     async fn get_remote_resource(&self, url: &str) -> Vec<Response> {
         let mut page_num = 1;
         let mut ans = Vec::new();
+        let mut retry = 0;
         loop {
             let response: Response;
             // permit is necessary. Otherwise, the program will be blocked by the rate limit.
@@ -48,10 +49,24 @@ impl RemoteData {
                 .send();
             match temp.await {
                 Err(e) => {
-                    println!("{}", t!("In getting %{url} : %{e}", url = url, e = e));
-                    return ans;
+                    println!(
+                        "{}",
+                        t!(
+                            "In getting %{url} : %{e} %{retry}/10",
+                            url = url,
+                            e = e,
+                            retry = retry
+                        )
+                    );
+                    retry += 1;
+                    if retry > 10 {
+                        return ans;
+                    }
+                    continue;
+                    // return ans;
                 }
                 Ok(body) => {
+                    retry = 0;
                     response = body;
                 }
             }
