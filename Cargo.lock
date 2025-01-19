@@ -175,7 +175,6 @@ dependencies = [
  "chrono",
  "clap",
  "dialoguer",
- "file",
  "futures",
  "indicatif",
  "lazy_static",
@@ -427,12 +426,6 @@ name = "fastrand"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "658bd65b1cf4c852a3cc96f18a8ce7b5640f6b703f905c7d74532294c2a63984"
-
-[[package]]
-name = "file"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "072420e920a41e95a021116fb47c331d1199aab0f12ca1f77903d5c0ec65c37a"
 
 [[package]]
 name = "fnv"

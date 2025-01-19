@@ -5,6 +5,8 @@ edition = "2021"
 description = "A syncer to Canvas LMS with files among courses"
 license = "MIT"
 repository = "https://github.com/wznmickey/canvas_syncer"
+categories = ["command-line-utilities","filesystem"]
+keywords = ["canvas", "education", "canvas-lms", "course", "download"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -13,7 +15,6 @@ futures = "0.3"
 serde_json = "1.0.115"
 lazy_static = "1.4.0"
 serde = {version = "1.0.150", features = ["derive"]}
-file = "1.1.2"
 chrono = {version = "0.4.38"}
 clap = { version = "4.5.4", features = ["derive"] }
 dialoguer = "0.11.0"
