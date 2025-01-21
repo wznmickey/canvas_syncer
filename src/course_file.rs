@@ -34,12 +34,9 @@ impl GetFromJson<CourseFile, Rc<RefCell<Folder>>, PathBuf> for CourseFile {
     fn get_from_json(x: &Value, f: Rc<RefCell<Folder>>, path: PathBuf) -> Option<CourseFile> {
         let temp = x["display_name"].as_str()?.to_string();
         if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
-            println!(
-                "{}",
-                t!(
-                    "File %{name} is locked, skip it",
-                    name = x["display_name"].as_str()?
-                )
+            info!(
+                "File %{name} is locked, skip it",
+                name = x["display_name"].as_str()?
             );
             return None;
         }
@@ -72,12 +69,9 @@ impl GetFromJson<CourseFile, Rc<RefCell<Assignment>>, PathBuf> for CourseFile {
     fn get_from_json(x: &Value, f: Rc<RefCell<Assignment>>, path: PathBuf) -> Option<CourseFile> {
         let temp = x["display_name"].as_str()?.to_string();
         if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
-            println!(
-                "{}",
-                t!(
-                    "File %{name} is locked, skip it",
-                    name = x["display_name"].as_str()?
-                )
+            info!(
+                "File %{name} is locked, skip it",
+                name = x["display_name"].as_str()?
             );
             return None;
         }
@@ -110,12 +104,9 @@ impl GetFromJson<CourseFile, Rc<RefCell<Page>>, PathBuf> for CourseFile {
     fn get_from_json(x: &Value, f: Rc<RefCell<Page>>, path: PathBuf) -> Option<CourseFile> {
         let temp = x["display_name"].as_str()?.to_string();
         if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
-            println!(
-                "{}",
-                t!(
-                    "File %{name} is locked, skip it",
-                    name = x["display_name"].as_str()?
-                )
+            info!(
+                "File %{name} is locked, skip it",
+                name = x["display_name"].as_str()?
             );
             return None;
         }

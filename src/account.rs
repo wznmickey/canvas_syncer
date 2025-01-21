@@ -5,6 +5,8 @@ use crate::structs::*;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
+use logger_rust_i18n::*;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::Write;
 use std::fs;
@@ -12,7 +14,6 @@ use std::fs::*;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
-
 pub struct Account {
     config: Config,
     remote_data: RemoteData,
@@ -27,13 +28,26 @@ pub struct Account {
     need_download_files: Vec<Rc<RefCell<CourseFile>>>,
     download_size: u64,
     update_size: u64,
+    pub multi_progress_bar: MultiProgress,
+    pub progress_bar: ProgressBar,
 }
 
 impl Account {
     pub fn new(c: Config) -> Self {
         let config: Config = c;
         config.print();
+        let m = MultiProgress::new();
+        let pb = m.add(ProgressBar::new(9));
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.blue}  [{wide_bar:.green/green}] {pos}/{len}")
+                .unwrap()
+                .progress_chars("#>-"),
+        );
         let remote_data = RemoteData::new(&config.key, &config.canvas_url);
+
+        info!("Get courses list");
+
         let mut course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
 
         if let Some(z) = &config
@@ -81,14 +95,54 @@ impl Account {
             need_update_files: Vec::new(),
             download_size: 0,
             update_size: 0,
+            progress_bar: pb,
+            multi_progress_bar: m,
         }
     }
-    pub fn get_assignments(&mut self) {
+
+    pub fn run(&mut self) {
+        self.get_folders();
+        self.get_assignments();
+        self.get_modules();
+
+        self.get_items();
+
+        self.get_pages();
+
+        self.create_folders();
+
+        self.create_assignments();
+
+        self.create_pages();
+
+        self.get_files();
+
+        self.progress_bar.finish();
+
+        self.calculate_files();
+        self.download_files();
+        self.update_files();
+    }
+    fn get_bar(&self, num: u64, msg: Cow<'_, str>) -> ProgressBar {
+        let pb = self
+            .multi_progress_bar
+            .add(ProgressBar::new(num))
+            .with_message(msg.into_owned());
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{spinner:.green} [{msg}] [{bar:.cyan/blue}] {pos}/{len}")
+                .unwrap()
+                .progress_chars("#>-"),
+        );
+        pb
+    }
+    fn get_assignments(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.assignmnets = rt.block_on(self.get_assignments_helper());
+        self.progress_bar.inc(1);
     }
-    pub async fn get_assignments_helper(&self) -> Vec<Rc<RefCell<Assignment>>> {
-        let pb = &ProgressBar::new(self.course.len() as u64);
+    async fn get_assignments_helper(&self) -> Vec<Rc<RefCell<Assignment>>> {
+        let pb = &self.get_bar(self.course.len() as u64, t!("Get assignments list"));
         let result = join_all(self.course.iter().map(|course| async move {
             let temp = self
                 .remote_data
@@ -101,17 +155,18 @@ impl Account {
         .into_iter()
         .flatten()
         .collect();
-        pb.finish_with_message("done");
+        pb.finish();
         result
     }
 
-    pub fn get_modules(&mut self) {
+    fn get_modules(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.modules = rt.block_on(self.get_modules_helper());
+        self.progress_bar.inc(1);
     }
 
-    pub async fn get_modules_helper(&self) -> Vec<Rc<RefCell<Module>>> {
-        let pb = &ProgressBar::new(self.course.len() as u64);
+    async fn get_modules_helper(&self) -> Vec<Rc<RefCell<Module>>> {
+        let pb = &self.get_bar(self.course.len() as u64, t!("Get modules list"));
         let result = join_all(self.course.iter().map(|course| async move {
             let temp = self.remote_data.get_module_list(Rc::clone(course)).await;
             pb.inc(1);
@@ -121,17 +176,18 @@ impl Account {
         .into_iter()
         .flatten()
         .collect();
-        pb.finish_with_message("done");
+        pb.finish();
         result
     }
 
-    pub fn get_items(&mut self) {
+    fn get_items(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.items = rt.block_on(self.get_items_helper());
+        self.progress_bar.inc(1);
     }
 
-    pub async fn get_items_helper(&self) -> Vec<Rc<RefCell<Item>>> {
-        let pb = &ProgressBar::new(self.modules.len() as u64);
+    async fn get_items_helper(&self) -> Vec<Rc<RefCell<Item>>> {
+        let pb = &self.get_bar(self.modules.len() as u64, t!("Get items list"));
         let result = join_all(self.modules.iter().map(|modules| async move {
             let temp = self.remote_data.get_item_list(Rc::clone(modules)).await;
             pb.inc(1);
@@ -141,17 +197,18 @@ impl Account {
         .into_iter()
         .flatten()
         .collect();
-        pb.finish_with_message("done");
+        pb.finish();
         result
     }
 
-    pub fn get_pages(&mut self) {
+    fn get_pages(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.pages = rt.block_on(self.get_pages_helper());
+        self.progress_bar.inc(1);
     }
 
-    pub async fn get_pages_helper(&self) -> Vec<Rc<RefCell<Page>>> {
-        let pb = &ProgressBar::new(self.items.len() as u64);
+    async fn get_pages_helper(&self) -> Vec<Rc<RefCell<Page>>> {
+        let pb = &self.get_bar(self.items.len() as u64, t!("Get pages list"));
         let result = join_all(self.items.iter().map(|item| async move {
             let temp = self.remote_data.get_page_list(Rc::clone(item)).await;
             pb.inc(1);
@@ -161,17 +218,17 @@ impl Account {
         .into_iter()
         .flatten()
         .collect();
-        pb.finish_with_message("done");
+        pb.finish();
         result
     }
-
-    pub fn get_folders(&mut self) {
+    fn get_folders(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.folders = rt.block_on(self.get_folders_helper());
+        self.progress_bar.inc(1);
     }
 
-    pub async fn get_folders_helper(&self) -> Vec<Rc<RefCell<Folder>>> {
-        let pb = &ProgressBar::new(self.course.len() as u64);
+    async fn get_folders_helper(&self) -> Vec<Rc<RefCell<Folder>>> {
+        let pb = &self.get_bar(self.course.len() as u64, t!("Get course file folders list"));
         let result = join_all(self.course.iter().map(|course| async move {
             let temp = self.remote_data.get_folder_list(Rc::clone(course)).await;
             pb.inc(1);
@@ -181,11 +238,11 @@ impl Account {
         .into_iter()
         .flatten()
         .collect();
-        pb.finish_with_message("done");
+        pb.finish();
         result
     }
-    pub fn create_folders(&self) {
-        let pb = ProgressBar::new(self.folders.len() as u64);
+    fn create_folders(&self) {
+        let pb = &self.get_bar(self.folders.len() as u64, t!("Create file folders"));
         for folder in &self.folders {
             let folder = folder.borrow();
             if self.config.allow_term {
@@ -206,10 +263,14 @@ impl Account {
             }
             pb.inc(1);
         }
-        pb.finish_with_message("done");
+        pb.finish();
+        self.progress_bar.inc(1);
     }
-    pub fn create_assignments(&self) {
-        let pb = ProgressBar::new(self.assignmnets.len() as u64);
+    fn create_assignments(&self) {
+        let pb = &self.get_bar(
+            self.assignmnets.len() as u64,
+            t!("Create assignment folders"),
+        );
         for assignment in &self.assignmnets {
             let assignment = assignment.borrow();
             if self.config.allow_term {
@@ -230,10 +291,11 @@ impl Account {
             }
             pb.inc(1);
         }
-        pb.finish_with_message("done");
+        pb.finish();
+        self.progress_bar.inc(1);
     }
-    pub fn create_pages(&self) {
-        let pb = ProgressBar::new(self.pages.len() as u64);
+    fn create_pages(&self) {
+        let pb = &self.get_bar(self.pages.len() as u64, t!("Create page folders"));
         for page in &self.pages {
             let page = page.borrow();
             if self.config.allow_term {
@@ -276,15 +338,20 @@ impl Account {
             }
             pb.inc(1);
         }
-        pb.finish_with_message("done");
+        pb.finish();
+        self.progress_bar.inc(1);
     }
-    pub fn get_files(&mut self) {
+    fn get_files(&mut self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.files = rt.block_on(self.get_files_helper());
+        self.progress_bar.inc(1);
     }
 
     async fn get_files_helper(&self) -> Vec<Rc<RefCell<CourseFile>>> {
-        let pb = &ProgressBar::new(self.folders.len() as u64);
+        let pb = &self.get_bar(
+            self.folders.len() as u64 + self.assignmnets.len() as u64 + self.pages.len() as u64,
+            t!("Get files list"),
+        );
         let mut result_a: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.folders.iter().map(|folder| async move {
                 let path = if !self.config.allow_term {
@@ -305,9 +372,6 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
-        pb.finish_with_message("done");
-        // result
-        let pb = &ProgressBar::new(self.folders.len() as u64);
         let mut result_b: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.assignmnets.iter().map(|assignment| async move {
                 let path = if !self.config.allow_term {
@@ -328,8 +392,6 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
-        pb.finish_with_message("done");
-        let pb = &ProgressBar::new(self.pages.len() as u64);
         let mut result_c: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.pages.iter().map(|page| async move {
                 let path = if !self.config.allow_term {
@@ -359,11 +421,12 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
+        pb.finish();
         result_a.append(result_b.as_mut());
         result_a.append(result_c.as_mut());
         result_a
     }
-    pub fn calculate_files(&mut self) {
+    fn calculate_files(&mut self) {
         for file in &self.files {
             let temp = file.borrow().get_status();
             match temp {
@@ -379,30 +442,26 @@ impl Account {
             }
         }
     }
-    pub fn download_files(&self) {
+    fn download_files(&self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(self.download_files_helper());
     }
     async fn download_files_helper(&self) {
         if self.need_download_files.is_empty() {
-            println!("{}", t!("No files need to download"));
+            info!("No files need to download");
             return;
         }
-        println!(
-            "{}",
-            t!(
-                "download size: %{size} MiB",
-                size = self.download_size as f64 / 1024.0 / 1024.0
-            )
-        );
         if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("Do you want to download?"))
+            .with_prompt(prompt!(
+                "Do you want to download: {} MiB ?",
+                self.download_size as f64 / 1024.0 / 1024.0
+            ))
             .interact()
             .unwrap()
         {
             let m = MultiProgress::new();
             let pb = m.add(ProgressBar::new(self.download_size));
-            println!("{}", t!("Download files..."));
+            info!("Download files...");
             pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta} {bytes_per_sec})")
             .unwrap()
             .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
@@ -420,31 +479,27 @@ impl Account {
             result.await;
             pb.finish_with_message("All downloaded");
         } else {
-            println!("{}", t!("Do not download"));
+            info!("Do not download");
         }
     }
-    pub fn update_files(&self) {
+    fn update_files(&self) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(self.update_files_helper())
     }
     async fn update_files_helper(&self) {
         if self.need_update_files.is_empty() {
-            println!("{}", t!("No files need to update"));
+            info!("No files need to update");
             return;
         }
-        println!(
-            "{}",
-            t!(
-                "update size: %{size} MiB",
-                size = self.update_size as f64 / 1024.0 / 1024.0
-            )
-        );
         if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("Do you want to update?"))
+            .with_prompt(prompt!(
+                "Do you want to update: {} MiB?",
+                self.update_size as f64 / 1024.0 / 1024.0
+            ))
             .interact()
             .unwrap()
         {
-            println!("{}", t!("Update files..."));
+            info!("Update files...");
             let m = MultiProgress::new();
             let pb = m.add(ProgressBar::new(self.update_size));
             pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta} {bytes_per_sec})")
@@ -471,7 +526,7 @@ impl Account {
                 match res {
                     Ok(_) => {}
                     Err(e) => {
-                        println!("In updating[1] : {e}");
+                        error!("In updating[1] : {e}");
                         return;
                     }
                 }
@@ -486,7 +541,7 @@ impl Account {
             result.await;
             pb.finish_with_message("all updated");
         } else {
-            println!("{}", t!("Do not update"));
+            info!("Do not update");
         }
     }
 }

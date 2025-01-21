@@ -49,17 +49,20 @@ impl RemoteData {
                 .send();
             match temp.await {
                 Err(e) => {
-                    println!(
-                        "{}",
-                        t!(
-                            "In getting %{url} : %{e} %{retry}/10",
-                            url = url,
-                            e = e,
-                            retry = retry
-                        )
+                    warn!(
+                        "In getting {url} : {e} {retry}/10",
+                        url = url,
+                        e = e,
+                        retry = retry
                     );
                     retry += 1;
                     if retry > 10 {
+                        error!(
+                            "In getting {url} : {e} {retry}/10",
+                            url = url,
+                            e = e,
+                            retry = retry
+                        );
                         return ans;
                     }
                     continue;
@@ -79,13 +82,8 @@ impl RemoteData {
                 .parse()
                 .unwrap();
             if temp < 0.0 {
-                println!(
-                    "{}",
-                    t!(
-                        "In getting %{url} : rate limit exceeded wait 10s",
-                        url = url
-                    )
-                );
+                info!("In getting {} : rate limit exceeded wait 10s", url);
+
                 sleep(Duration::from_millis(1000 * 10)).await;
                 continue;
             }
@@ -100,7 +98,7 @@ impl RemoteData {
                 return ans;
             }
             if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
-                println!("{:?} in {:?}", response.headers(), url);
+                info!("{:?} in {:?}", response.headers(), url);
                 sleep(Duration::from_millis(1000)).await;
                 continue;
             }
@@ -277,7 +275,11 @@ impl RemoteData {
         let _permit = self.sem.acquire_many(50).await.unwrap();
         match tokio::fs::File::create(path.join(file_name.to_string() + ".temp")).await {
             Err(e) => {
-                println!("In creating {file_name} : {e}");
+                error!(
+                    "In creating {file_name} : {e}",
+                    file_name = file_name,
+                    e = e
+                );
                 return;
             }
             Ok(temp) => {
@@ -304,7 +306,11 @@ impl RemoteData {
                             Some(chunk) => {
                                 let res = buf.write(&chunk.slice(0..chunk.len())).await;
                                 if let Err(e) = res {
-                                    println!("In writing[1] {file_name} : {e}");
+                                    error!(
+                                        "In writing[1] {file_name} : {e}",
+                                        file_name = file_name,
+                                        e = e
+                                    );
                                     return;
                                 }
                                 pb.inc(chunk.len() as u64);
@@ -312,26 +318,43 @@ impl RemoteData {
                             }
                         },
                         Err(e) => {
-                            println!("{:?}", temp.headers());
-                            println!("In downloading[1] {file_name} : {e}");
+                            error!(
+                                "In downloading[1] {file_name} : {e}",
+                                file_name = file_name,
+                                e = e
+                            );
                         }
                     }
                 }
                 let temp = buf.flush().await;
                 if let Err(e) = temp {
-                    println!("In downloading[2] {file_name} : {e}")
+                    error!(
+                        "In writing[2] {file_name} : {e}",
+                        file_name = file_name,
+                        e = e
+                    );
                 }
                 let res = fs::rename(
                     path.join(file_name.to_string() + ".temp"),
                     path.join(file_name),
                 );
                 if let Err(e) = res {
-                    println!("In downloading[3] {file_name} : {e}")
+                    error!(
+                        "In renaming {file_name} : {e}",
+                        file_name = file_name,
+                        e = e
+                    );
                 }
                 pb.set_message(format!("{file_name} done"));
                 mpb.finish_and_clear();
             }
-            Err(e) => println!("In downloading[4] {file_name} : {e}"),
+            Err(e) => {
+                error!(
+                    "In downloading[2] {file_name} : {e}",
+                    file_name = file_name,
+                    e = e
+                );
+            }
         }
     }
 }

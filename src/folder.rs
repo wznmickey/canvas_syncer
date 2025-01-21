@@ -15,12 +15,9 @@ pub struct Folder {
 impl GetFromJson<Folder, Rc<RefCell<Course>>, i32> for Folder {
     fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Folder> {
         if x["locked"].as_bool()? || x["locked_for_user"].as_bool()? {
-            println!(
-                "{}",
-                t!(
-                    "Folder %{name} is locked, skip it",
-                    name = x["display_name"].as_str()?
-                )
+            info!(
+                "Folder %{name} is locked, skip it",
+                name = x["display_name"].as_str()?
             );
             return None;
         }

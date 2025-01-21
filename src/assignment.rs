@@ -15,12 +15,9 @@ pub struct Assignment {
 impl GetFromJson<Assignment, Rc<RefCell<Course>>, i32> for Assignment {
     fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Assignment> {
         if x["locked_for_user"].as_bool()? {
-            println!(
-                "{}",
-                t!(
-                    "Assignment %{name} is locked, skip it",
-                    name = x["display_name"].as_str()?
-                )
+            info!(
+                "Assignment %{name} is locked, skip it",
+                name = x["display_name"].as_str()?
             );
             return None;
         }

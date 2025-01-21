@@ -16,10 +16,10 @@ pub struct Config {
 
 impl Config {
     pub fn print(&self) {
-        println!(
+        info!(
             "local_place={:?},canvas_url={:?},{:?}",
-            self.local_place, self.canvas_url, self.filters,
-        )
+            self.local_place, self.canvas_url, self.filters
+        );
     }
     pub fn read_file(s: &str) -> Vec<Self> {
         let file = File::open(s).unwrap();
