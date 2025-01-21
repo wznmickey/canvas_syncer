@@ -1,7 +1,13 @@
 Source code location: https://github.com/wznmickey/canvas_syncer
 
-Plan to implement Canvas-Syncer (https://github.com/BoYanZh/Canvas-Syncer) in rust to gain higher readability and extension.
+Features:
+1. Support to download files accessable in file section as well as the files in assignments and modules and maintain the structure.
+2. Support to filter courses and terms. (File size and type coming soon)
+3. Support to monitor changes in files and update them.
+4. Support to operate on more than one Canvas system.
+5. Support to download with multiple threads.
 
+Plan to implement Canvas-Syncer (https://github.com/BoYanZh/Canvas-Syncer) in rust to gain higher readability and extension.
 
 Roadmap:
 1. use blocking to complete basic functions (finished)
@@ -17,4 +23,4 @@ The default config file is `./config.json` and you can use `--config` to set its
 
 You can use use cargo to install this program.
 
-If you are using Windows or Linux, you can also use the compiled file in github releases. MacOS version is not provided in the release because of API issues of the script used in github actions.
+You can also directly use the compiled file in github releases in https://github.com/wznmickey/canvas_syncer/releases .
