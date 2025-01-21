@@ -25,7 +25,6 @@ rust_i18n::i18n!("locales");
 /// Syncer of Canvas
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-
 struct Args {
     /// Path of the config file
     #[arg(short, long)]
