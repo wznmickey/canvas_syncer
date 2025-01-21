@@ -1,61 +1,38 @@
-_version: 2
-Create folders...:
-  en: 'Crwate folders...'
-  zh: '创建文件夹...'
-Do not download:
-  en: "Do not download"
-  zh: "不下载"
-Do not update:
-  en: "Do not update"
-  zh: "不更新"
-Download files...:
-  en: "Download files..."
-  zh: "下载文件..."
-Get files list from canvas...:
-  en: "Get files list from canvas..."
-  zh: "从Canvas获取文件列表..."
-Get folders list from canvas...:
-  en: "Get folders list from canvas..."
-  zh: "从Canvas获取文件夹列表..."
-'In getting %{url} : rate limit exceeded wait 10s':
-  en: 'In getting %{url} : rate limit exceeded wait 10s'
-  zh: '在获取 %{url} : 速率超过限制 等待10秒'
-'In getting %{url} : %{e}':
-  en: 'In getting %{url} : %{e}'
-  zh: '在获取 %{url} : %{e}'
-No files need to download:
-  en: No files need to download
-  zh: 没有需要下载的文件
-No files need to update:
-  en: No files need to update
-  zh: 没有需要更新的文件
+Create assignment folders:
+  en: Create assignment folders
+  zh: 创建作业文件夹
+Create file folders:
+  en: Create file folders
+  zh: 创建文件夹
+Create page folders:
+  en: Create page folders
+  zh: 创建页面文件夹
+Get assignments list:
+  en: Get assignments list
+  zh: 获取作业列表
+Get course file folders list:
+  en: Get course file folders list
+  zh: 获取课程文件夹列表
+Get files list:
+  en: Get files list
+  zh: 获取文件列表
+Get items list:
+  en: Get items list
+  zh: 获取项目列表
+Get modules list:
+  en: Get modules list
+  zh: 获取模块列表
+Get pages list:
+  en: Get pages list
+  zh: 获取页面列表
 'Place to download files:':
   en: 'Place to download files:'
   zh: '下载文件的位置:'
-Update files...:
-  en: 'Update files...'
-  zh: '更新文件...'
 Your Canvas URL,like https://oc.sjtu.edu.cn:
-  en: "Your Canvas URL, like https://oc.sjtu.edu.cn"
-  zh: '你的Canvas URL,例如 https://oc.sjtu.edu.cn'
+  en: Your Canvas URL,like https://oc.sjtu.edu.cn
+  zh: 你的Canvas URL，例如https://oc.sjtu.edu.cn
 Your Canvas key:
   en: Your Canvas key
   zh: 你的Canvas key
-'download size: %{size} MiB':
-  en: 'download size: %{size} MiB'
-  zh: '下载大小: %{size} MiB'
-'update size: %{size} MiB':
-  en: 'update size: %{size} MiB'
-  zh: '更新大小: %{size} MiB'
-Do you want to download?:
-  en: Do you want to download?
-  zh: 你想要下载吗？
-Do you want to update?:
-  en: Do you want to update?
-  zh: 你想要更新吗？
-File %{name} is locked, skip it:
-  en: File %{name} is locked, skip it
-  zh: 文件 %{name} 被锁定，跳过
-Folder %{name} is locked, skip it:
-  en: Folder %{name} is locked, skip it
-  zh: 文件夹 %{name} 被锁定，跳过
+_version: 2
+
