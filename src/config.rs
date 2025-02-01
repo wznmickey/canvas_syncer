@@ -1,9 +1,8 @@
-use dialoguer::{theme::ColorfulTheme, Input};
+use crate::filter::Filters;
+use inquire::{required, Text};
 use serde::{Deserialize, Serialize};
 use std::fs::*;
 use std::io::*;
-
-use crate::filter::Filters;
 #[derive(Serialize, Deserialize)]
 
 pub struct Config {
@@ -27,21 +26,28 @@ impl Config {
         serde_json::from_reader(reader).expect("Error while reading config file")
     }
     pub fn new() -> Self {
-        let mut key: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("Your Canvas key"))
-            .interact_text()
+        let canvas_url = Text::new(&t!("Your Canvas URL"))
+            .with_help_message(&t!("format would looks like https://oc.sjtu.edu.cn"))
+            .with_validator(required!())
+            .prompt()
             .unwrap();
-        let local_place: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("Place to download files:"))
-            .interact_text()
+        let key = Text::new(&t!("Your Canvas key"))
+            .with_formatter(&|s| {
+                if !s.starts_with("B") {
+                    "Bearer ".to_string() + s
+                } else {
+                    s.to_string()
+                }
+            })
+            .with_validator(required!())
+            .prompt()
             .unwrap();
-        let canvas_url: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(t!("Your Canvas URL,like https://oc.sjtu.edu.cn"))
-            .interact_text()
+        let local_place = Text::new(&t!("Place to download files"))
+            .with_default("./canvas")
+            .with_help_message(&t!("default is ./canvas"))
+            .with_validator(required!())
+            .prompt()
             .unwrap();
-        if !key.starts_with("B") {
-            key = "Bearer ".to_string() + &key;
-        }
         Self {
             key,
             local_place,
