@@ -2,9 +2,9 @@ use crate::config::*;
 use crate::download::*;
 use crate::filter::object_filter_check;
 use crate::structs::*;
-use dialoguer::{theme::ColorfulTheme, Confirm};
 use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
+use inquire::Confirm;
 use logger_rust_i18n::*;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -443,13 +443,13 @@ impl Account {
             info!("No files need to download");
             return;
         }
-        if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt!(
-                "Do you want to download: {} MiB ?",
-                self.download_size as f64 / 1024.0 / 1024.0
-            ))
-            .interact()
-            .unwrap()
+        if Confirm::new(&prompt!(
+            "Do you want to download: {} MiB ?",
+            self.download_size as f64 / 1024.0 / 1024.0
+        ))
+        .with_default(false)
+        .prompt()
+        .unwrap()
         {
             let m = MultiProgress::new();
             let pb = m.add(ProgressBar::new(self.download_size));
@@ -483,13 +483,13 @@ impl Account {
             info!("No files need to update");
             return;
         }
-        if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt!(
-                "Do you want to update: {} MiB?",
-                self.update_size as f64 / 1024.0 / 1024.0
-            ))
-            .interact()
-            .unwrap()
+        if Confirm::new(&prompt!(
+            "Do you want to update: {} MiB?",
+            self.update_size as f64 / 1024.0 / 1024.0
+        ))
+        .with_default(false)
+        .prompt()
+        .unwrap()
         {
             info!("Update files...");
             let m = MultiProgress::new();
