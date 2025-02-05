@@ -14,6 +14,7 @@ mod util;
 use crate::{account::Account, config::Config};
 use clap::Parser;
 use std::fs;
+use std::sync::OnceLock;
 use sys_locale::get_locale;
 #[macro_use]
 extern crate logger_rust_i18n;
@@ -29,6 +30,9 @@ struct Args {
     /// Path of the config file
     #[arg(short, long)]
     config: Option<String>,
+    // Whether to skip the confirmation in downloading and updating files
+    #[arg(short)]
+    yes: bool,
     #[command(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
 }
@@ -37,11 +41,11 @@ fn init_config() {
     let config = config::Config::new();
     config.save("./config.json");
 }
-
+static ARGS: OnceLock<Args> = OnceLock::new();
 fn main() {
-    let args = Args::parse();
+    ARGS.get_or_init(Args::parse);
     env_logger::Builder::new()
-        .filter_level(args.verbose.log_level_filter())
+        .filter_level(ARGS.get().unwrap().verbose.log_level_filter())
         .init();
     rust_i18n::set_locale(
         get_locale()
@@ -51,7 +55,7 @@ fn main() {
     info!("We have {:?}", rust_i18n::available_locales!());
     info!("Now we use {}", &*rust_i18n::locale());
     let c: Vec<Config>;
-    if let Some(config) = args.config.as_deref() {
+    if let Some(config) = ARGS.get().unwrap().config.as_deref() {
         trace!("Read config file: {}", config);
         c = config::Config::read_file(config);
     } else if fs::metadata("./config.json").is_ok() {
