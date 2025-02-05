@@ -30,7 +30,8 @@ struct Args {
     /// Path of the config file
     #[arg(short, long)]
     config: Option<String>,
-    // Whether to skip the confirmation in downloading and updating files
+
+    /// Giving yes to all confirmations in downloading and updating files
     #[arg(short)]
     yes: bool,
     #[command(flatten)]
