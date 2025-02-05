@@ -31,7 +31,7 @@ struct Args {
     #[arg(short, long)]
     config: Option<String>,
     /// Giving yes to all confirmations in downloading and updating files
-    #[arg(short,long)]
+    #[arg(short, long)]
     yes: bool,
     #[command(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
