@@ -38,7 +38,6 @@ fn specia_char_replace(st: String) -> String {
         .replace(":", "_")
         .replace("?", "_")
         .replace("*", "_")
-        .replace("\"", "_")
         .replace("<", "_")
         .replace(">", "_")
         .replace("|", "_")
@@ -86,8 +85,10 @@ impl Account {
                 .collect();
         }
         course.iter().for_each(|x| {
-            x.borrow_mut().term_name = specia_char_replace(x.borrow().term_name.clone());
-            x.borrow_mut().name = specia_char_replace(x.borrow().name.clone());
+            let temp = specia_char_replace(x.borrow().term_name.clone());
+            x.borrow_mut().term_name = temp;
+            let temp = specia_char_replace(x.borrow().name.clone());
+            x.borrow_mut().name = temp
         });
 
         Account {
@@ -112,28 +113,34 @@ impl Account {
     pub fn run(&mut self) {
         self.get_folders();
         for folder in &self.folders {
-            folder.borrow_mut().fullname = specia_char_replace(folder.borrow().fullname.clone());
-            folder.borrow_mut().name = specia_char_replace(folder.borrow().name.clone());
+            let temp = specia_char_replace(folder.borrow().fullname.clone());
+            folder.borrow_mut().fullname = temp;
+            let temp = specia_char_replace(folder.borrow().name.clone());
+            folder.borrow_mut().name = temp;
         }
         debug!("{:?}", self.folders);
         self.get_assignments();
         for assignment in &self.assignmnets {
-            assignment.borrow_mut().name = specia_char_replace(assignment.borrow().name.clone());
+            let temp = specia_char_replace(assignment.borrow().name.clone());
+            assignment.borrow_mut().name = temp;
         }
         debug!("{:?}", self.assignmnets);
         self.get_modules();
         for module in &self.modules {
-            module.borrow_mut().name = specia_char_replace(module.borrow().name.clone());
+            let temp = specia_char_replace(module.borrow().name.clone());
+            module.borrow_mut().name = temp;
         }
         debug!("{:?}", self.modules);
         self.get_items();
         for item in &self.items {
-            item.borrow_mut().name = specia_char_replace(item.borrow().name.clone());
+            let temp = specia_char_replace(item.borrow().name.clone());
+            item.borrow_mut().name = temp;
         }
         debug!("{:?}", self.items);
         self.get_pages();
         for page in &self.pages {
-            page.borrow_mut().name = specia_char_replace(page.borrow().name.clone());
+            let temp = specia_char_replace(page.borrow().name.clone());
+            page.borrow_mut().name = temp;
         }
         debug!("{:?}", self.pages);
         self.create_folders();
