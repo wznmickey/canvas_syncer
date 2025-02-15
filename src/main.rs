@@ -13,8 +13,10 @@ mod structs;
 mod util;
 use crate::{account::Account, config::Config};
 use clap::Parser;
+use clap_verbosity_flag::DebugLevel;
 use std::fs;
 use std::sync::OnceLock;
+use std::time::SystemTime;
 use sys_locale::get_locale;
 #[macro_use]
 extern crate logger_rust_i18n;
@@ -34,9 +36,25 @@ struct Args {
     #[arg(short, long)]
     yes: bool,
     #[command(flatten)]
-    verbose: clap_verbosity_flag::Verbosity,
+    verbose: clap_verbosity_flag::Verbosity<DebugLevel>,
 }
-
+fn setup_logger() -> Result<(), fern::InitError> {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {} {}] {}",
+                humantime::format_rfc3339_seconds(SystemTime::now()),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(ARGS.get().unwrap().verbose.log_level_filter())
+        // .chain(std::io::stderr())
+        .chain(fern::log_file("output.log")?)
+        .apply()?;
+    Ok(())
+}
 fn init_config() {
     let config = config::Config::new();
     config.save("./config.json");
@@ -44,9 +62,10 @@ fn init_config() {
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn main() {
     ARGS.get_or_init(Args::parse);
-    env_logger::Builder::new()
-        .filter_level(ARGS.get().unwrap().verbose.log_level_filter())
-        .init();
+    // env_logger::Builder::new()
+    // .filter_level(ARGS.get().unwrap().verbose.log_level_filter())
+    //     .init();
+    setup_logger().unwrap();
     rust_i18n::set_locale(
         get_locale()
             .unwrap_or_else(|| String::from("en-US"))

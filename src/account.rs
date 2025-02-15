@@ -7,6 +7,7 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 use inquire::Confirm;
 use logger_rust_i18n::*;
+// use serde::de;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::Write;
@@ -103,14 +104,20 @@ impl Account {
 
     pub fn run(&mut self) {
         self.get_folders();
+        debug!("{:?}", self.folders);
         self.get_assignments();
+        debug!("{:?}", self.assignmnets);
         self.get_modules();
+        debug!("{:?}", self.modules);
         self.get_items();
+        debug!("{:?}", self.items);
         self.get_pages();
+        debug!("{:?}", self.pages);
         self.create_folders();
         self.create_assignments();
         self.create_pages();
         self.get_files();
+        debug!("{:?}", self.files);
         self.progress_bar.finish();
         self.calculate_files();
         self.download_files();
