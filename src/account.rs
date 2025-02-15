@@ -7,8 +7,6 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 use inquire::Confirm;
 use logger_rust_i18n::*;
-use serde::de;
-// use serde::de;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt::Write;
