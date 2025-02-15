@@ -41,6 +41,8 @@ fn specia_char_replace(st: String) -> String {
         .replace("<", "_")
         .replace(">", "_")
         .replace("|", "_")
+        .trim_end_matches([' ', '.'])
+        .to_string()
 }
 impl Account {
     pub fn new(c: Config) -> Self {
