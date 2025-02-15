@@ -32,16 +32,10 @@ impl Config {
             .prompt()
             .unwrap();
         let key = Text::new(&t!("Your Canvas key"))
-            .with_formatter(&|s| {
-                if !s.starts_with("B") {
-                    "Bearer ".to_string() + s
-                } else {
-                    s.to_string()
-                }
-            })
             .with_validator(required!())
             .prompt()
             .unwrap();
+
         let local_place = Text::new(&t!("Place to download files"))
             .with_default("./canvas")
             .with_help_message(&t!("default is ./canvas"))
@@ -49,7 +43,11 @@ impl Config {
             .prompt()
             .unwrap();
         Self {
-            key,
+            key: if !key.starts_with("Bearer ") {
+                "Bearer ".to_string() + &key
+            } else {
+                key
+            },
             local_place,
             canvas_url,
             allow_term: true,
