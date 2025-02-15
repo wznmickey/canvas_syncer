@@ -7,6 +7,7 @@ use futures::future::join_all;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 use inquire::Confirm;
 use logger_rust_i18n::*;
+use serde::de;
 // use serde::de;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -245,6 +246,7 @@ impl Account {
         let pb = &self.get_bar(self.folders.len() as u64, t!("Create file folders"));
         for folder in &self.folders {
             let folder = folder.borrow();
+            debug!("{:?} creating", folder);
             if self.config.allow_term {
                 create_dir_all(
                     Path::new(&self.config.local_place)
@@ -261,6 +263,7 @@ impl Account {
                 )
                 .unwrap();
             }
+            debug!("{:?} created", folder);
             pb.inc(1);
         }
         pb.finish();
@@ -273,6 +276,7 @@ impl Account {
         );
         for assignment in &self.assignmnets {
             let assignment = assignment.borrow();
+            debug!("{:?} creating", assignment);
             if self.config.allow_term {
                 create_dir_all(
                     Path::new(&self.config.local_place)
@@ -289,6 +293,7 @@ impl Account {
                 )
                 .unwrap();
             }
+            debug!("{:?} created", assignment);
             pb.inc(1);
         }
         pb.finish();
@@ -298,6 +303,7 @@ impl Account {
         let pb = &self.get_bar(self.pages.len() as u64, t!("Create page folders"));
         for page in &self.pages {
             let page = page.borrow();
+            debug!("{:?} creating", page);
             if self.config.allow_term {
                 create_dir_all(
                     Path::new(&self.config.local_place)
@@ -336,6 +342,7 @@ impl Account {
                 )
                 .unwrap();
             }
+            debug!("{:?} created", page);
             pb.inc(1);
         }
         pb.finish();
@@ -361,11 +368,13 @@ impl Account {
                         + "/"
                         + folder.borrow().course.borrow().term_name.as_str()
                 };
+                debug!("getting files in folder: {:?}", folder);
                 let temp = self
                     .remote_data
                     .get_file_list_from_folder(Rc::clone(folder), (path).into())
                     .await;
                 pb.inc(1);
+                debug!("got files in folder: {:?}", folder);
                 temp
             }))
             .await
@@ -473,9 +482,11 @@ impl Account {
                 let url = &file.borrow().url.clone();
                 let display_name = &file.borrow().display_name.clone();
                 let size = file.borrow().size;
+                debug!("Downloading: {:?}", file.borrow());
                 self.remote_data
                     .download_file(my_parent_path, url, display_name, &pb, &m, size)
                     .await;
+                debug!("Downloaded: {:?}", file.borrow());
             }));
             result.await;
             pb.finish_with_message("All downloaded");
@@ -536,9 +547,11 @@ impl Account {
                 let url = file.borrow().url.clone();
                 let display_name = file.borrow().display_name.clone();
                 let size = file.borrow().size;
+                debug!("Updating: {:?}", file.borrow());
                 self.remote_data
                     .download_file(&my_parent_path, &url, &display_name, &pb, &m, size)
                     .await;
+                debug!("Updated: {:?}", file.borrow());
             }));
             result.await;
             pb.finish_with_message("all updated");
