@@ -32,4 +32,4 @@ logger_rust_i18n = "0.1.1"
 inquire = "0.7.5"
 farm = "1.1.0"
 fern = "0.7.1"
-humantime = "2.1.0"
+

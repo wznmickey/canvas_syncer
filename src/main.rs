@@ -12,11 +12,11 @@ mod page;
 mod structs;
 mod util;
 use crate::{account::Account, config::Config};
+use chrono::Local;
 use clap::Parser;
 use clap_verbosity_flag::DebugLevel;
 use std::fs;
 use std::sync::OnceLock;
-use std::time::SystemTime;
 use sys_locale::get_locale;
 #[macro_use]
 extern crate logger_rust_i18n;
@@ -43,7 +43,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{} {} {}] {}",
-                humantime::format_rfc3339_seconds(SystemTime::now()),
+                Local::now(),
                 record.level(),
                 record.target(),
                 message
