@@ -118,13 +118,13 @@ jobs:
     - name: Run Cross Debug
       if: ${{ matrix.cross && !matrix.releaseMode }}
       run:
-        cross build -p canvas_syncer --dev --target ${{ matrix.target }} -v 
+        cross build -p canvas_syncer --target ${{ matrix.target }} -v 
     - name: Run Cargo  Release
       if: ${{ !matrix.cross  && matrix.releaseMode }}
       run: cargo build -p canvas_syncer  --release --target ${{ matrix.target }} 
     - name: Run Cargo Debug
       if: ${{ !matrix.cross && !matrix.releaseMode }}
-      run: cargo build -p canvas_syncer  --dev --target ${{ matrix.target }}
+      run: cargo build -p canvas_syncer --target ${{ matrix.target }}
 
     - name: create artifact directory
       shell: bash
