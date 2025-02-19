@@ -17,33 +17,88 @@ jobs:
       fail-fast: false
       matrix:
         include:
+
         - target: x86_64-pc-windows-msvc
           os: windows-latest
           cross: false
+          releaseMode: false
+          release: "dev"
         - target: x86_64-unknown-linux-musl
           os: ubuntu-22.04
           cross: true
+          releaseMode: false
+          release: "dev"
         - target: x86_64-apple-darwin
           os: macos-latest
           cross: false
+          releaseMode: false
+          release: "dev"
         - target: aarch64-apple-darwin
           os: macos-latest
           cross: false
+          releaseMode: false
+          release: "dev"
         - target: aarch64-pc-windows-msvc
           os: windows-latest
           cross: false
+          releaseMode: false
+          release: "dev"
         - target: aarch64-unknown-linux-musl
           os: ubuntu-22.04
           cross: true
+          releaseMode: false
+          release: "dev"
         - target: armv7-unknown-linux-musleabi
           os: ubuntu-22.04
           cross: true
+          releaseMode: false
+          release: "dev"
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-22.04
           cross: true
+          releaseMode: false
+          release: "dev"
 
-
-
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+          cross: false
+          releaseMode: true
+          release: "release"
+        - target: x86_64-unknown-linux-musl
+          os: ubuntu-22.04
+          cross: true
+          releaseMode: true
+          release: "release"
+        - target: x86_64-apple-darwin
+          os: macos-latest
+          cross: false
+          releaseMode: true
+          release: "release"
+        - target: aarch64-apple-darwin
+          os: macos-latest
+          cross: false
+          releaseMode: true
+          release: "release"
+        - target: aarch64-pc-windows-msvc
+          os: windows-latest
+          cross: false
+          releaseMode: true
+          release: "release"
+        - target: aarch64-unknown-linux-musl
+          os: ubuntu-22.04
+          cross: true
+          releaseMode: true
+          release: "release"
+        - target: armv7-unknown-linux-musleabi
+          os: ubuntu-22.04
+          cross: true
+          releaseMode: true
+          release: "release"
+        - target: riscv64gc-unknown-linux-gnu
+          os: ubuntu-22.04
+          cross: true
+          releaseMode: true
+          release: "release"
 
     steps:
     - uses: actions/checkout@v4
@@ -56,35 +111,39 @@ jobs:
       run:
         cargo install cross --git https://github.com/cross-rs/cross.git
 
-    - name: Run Cross
-      if: ${{ matrix.cross }}
+    - name: Run Cross Release
+      if: ${{ matrix.cross && matrix.releaseMode }}
       run:
         cross build -p canvas_syncer --release --target ${{ matrix.target }} -v 
-
-    - name: Run Cargo
-      if: ${{ !matrix.cross }}
+    - name: Run Cross Debug
+      if: ${{ matrix.cross && !matrix.releaseMode }}
+      run:
+        cross build -p canvas_syncer --dev --target ${{ matrix.target }} -v 
+    - name: Run Cargo  Release
+      if: ${{ !matrix.cross  && matrix.releaseMode }}
       run: cargo build -p canvas_syncer  --release --target ${{ matrix.target }} 
+    - name: Run Cargo Debug
+      if: ${{ !matrix.cross && !matrix.releaseMode }}
+      run: cargo build -p canvas_syncer  --dev --target ${{ matrix.target }}
+
     - name: create artifact directory
       shell: bash
       run: |
         directory=canvas_syncer-${{ matrix.target }}
         mkdir $directory
         cp README LICENSE config.json.example $directory
-        ls target
-        ls target/${{ matrix.target }}
-        ls target/${{ matrix.target }}/release
-        if [ -f target/${{ matrix.target }}/release/canvas_syncer.exe ]; then
-          cp target/${{ matrix.target }}/release/canvas_syncer.exe $directory
+        if [ -f target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer.exe ]; then
+          cp target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer.exe $directory/canvas_syncer-${{matrix.release}}.exe
           7z a -r $directory.zip $directory
         else
-          cp target/${{ matrix.target }}/release/canvas_syncer $directory
+          cp target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer $directory/canvas_syncer-${{matrix.release}}
           tar cJf $directory.tar.xz $directory
         fi
 
     - uses: actions/upload-artifact@v4
       if: github.event_name == 'workflow_dispatch'
       with:
-        name: canvas_syncer-${{ matrix.target }}
+        name: canvas_syncer-${{ matrix.target }}-${{matrix.release}}
         path: "canvas_syncer-${{ matrix.target }}.*"
         retention-days: 3
 
