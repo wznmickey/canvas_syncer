@@ -3,11 +3,12 @@ use inquire::{required, Text};
 use serde::{Deserialize, Serialize};
 use std::fs::*;
 use std::io::*;
+use std::path::PathBuf;
 #[derive(Serialize, Deserialize)]
 
 pub struct Config {
     pub key: String,
-    pub local_place: String,
+    pub local_place: PathBuf,
     pub canvas_url: String,
     pub allow_term: bool,
     pub filters: Option<Filters>,
@@ -37,8 +38,8 @@ impl Config {
             .unwrap();
 
         let local_place = Text::new(&t!("Place to download files"))
-            .with_default("./canvas")
-            .with_help_message(&t!("default is ./canvas"))
+            .with_default("canvas")
+            .with_help_message(&t!("default is canvas"))
             .with_validator(required!())
             .prompt()
             .unwrap();
@@ -48,7 +49,7 @@ impl Config {
             } else {
                 key
             },
-            local_place,
+            local_place: local_place.into(),
             canvas_url,
             allow_term: true,
             filters: None,

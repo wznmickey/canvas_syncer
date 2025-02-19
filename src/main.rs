@@ -14,7 +14,7 @@ mod util;
 use crate::{account::Account, config::Config};
 use chrono::Local;
 use clap::Parser;
-use clap_verbosity_flag::DebugLevel;
+
 use std::fs;
 use std::sync::OnceLock;
 use sys_locale::get_locale;
@@ -25,6 +25,10 @@ extern crate logger_rust_i18n;
 extern crate rust_i18n;
 rust_i18n::i18n!("locales");
 
+#[cfg(target_os = "linux")]
+type DefaultVerbosity = clap_verbosity_flag::WarnLevel;
+#[cfg(not(target_os = "linux"))]
+type DefaultVerbosity = clap_verbosity_flag::DebugLevel;
 /// Syncer of Canvas
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -35,8 +39,9 @@ struct Args {
     /// Giving yes to all confirmations in downloading and updating files
     #[arg(short, long)]
     yes: bool,
+
     #[command(flatten)]
-    verbose: clap_verbosity_flag::Verbosity<DebugLevel>,
+    verbose: clap_verbosity_flag::Verbosity<DefaultVerbosity>,
 }
 fn setup_logger() -> Result<(), fern::InitError> {
     fern::Dispatch::new()
@@ -57,7 +62,7 @@ fn setup_logger() -> Result<(), fern::InitError> {
 }
 fn init_config() {
     let config = config::Config::new();
-    config.save("./config.json");
+    config.save("config.json");
 }
 static ARGS: OnceLock<Args> = OnceLock::new();
 fn main() {
@@ -77,11 +82,11 @@ fn main() {
     if let Some(config) = ARGS.get().unwrap().config.as_deref() {
         trace!("Read config file: {}", config);
         c = config::Config::read_file(config);
-    } else if fs::metadata("./config.json").is_ok() {
-        c = config::Config::read_file("./config.json");
+    } else if fs::metadata("config.json").is_ok() {
+        c = config::Config::read_file("config.json");
     } else {
         init_config();
-        c = config::Config::read_file("./config.json");
+        c = config::Config::read_file("config.json");
     }
     let mut acc_v: Vec<Account> = Vec::new();
     for config in c {

@@ -32,17 +32,25 @@ pub struct Account {
     pub multi_progress_bar: MultiProgress,
     pub progress_bar: ProgressBar,
 }
-fn specia_char_replace(st: String) -> String {
-    st.replace("/", "_")
-        .replace("\\", "_")
-        .replace(":", "_")
-        .replace("?", "_")
-        .replace("*", "_")
-        .replace("<", "_")
-        .replace(">", "_")
-        .replace("|", "_")
-        .trim_end_matches([' ', '.'])
-        .to_string()
+fn special_char_replace(mut st: String, allow_separate: bool) -> String {
+    if cfg!(windows) {
+        if !allow_separate {
+            st = st.replace("/", "_").replace("\\", "_")
+        }
+        st.replace(":", "_")
+            .replace("?", "_")
+            .replace("*", "_")
+            .replace("<", "_")
+            .replace(">", "_")
+            .replace("|", "_")
+            .trim_end_matches([' ', '.'])
+            .to_string()
+    } else {
+        if !allow_separate {
+            st = st.replace("/", "_")
+        }
+        st
+    }
 }
 impl Account {
     pub fn new(c: Config) -> Self {
@@ -87,9 +95,9 @@ impl Account {
                 .collect();
         }
         course.iter().for_each(|x| {
-            let temp = specia_char_replace(x.borrow().term_name.clone());
+            let temp = special_char_replace(x.borrow().term_name.clone(), false);
             x.borrow_mut().term_name = temp;
-            let temp = specia_char_replace(x.borrow().name.clone());
+            let temp = special_char_replace(x.borrow().name.clone(), false);
             x.borrow_mut().name = temp
         });
 
@@ -115,33 +123,33 @@ impl Account {
     pub fn run(&mut self) {
         self.get_folders();
         for folder in &self.folders {
-            let temp = specia_char_replace(folder.borrow().fullname.clone());
+            let temp = special_char_replace(folder.borrow().fullname.clone(), true);
             folder.borrow_mut().fullname = temp;
-            let temp = specia_char_replace(folder.borrow().name.clone());
+            let temp = special_char_replace(folder.borrow().name.clone(), true);
             folder.borrow_mut().name = temp;
         }
         debug!("{:?}", self.folders);
         self.get_assignments();
         for assignment in &self.assignmnets {
-            let temp = specia_char_replace(assignment.borrow().name.clone());
+            let temp = special_char_replace(assignment.borrow().name.clone(), true);
             assignment.borrow_mut().name = temp;
         }
         debug!("{:?}", self.assignmnets);
         self.get_modules();
         for module in &self.modules {
-            let temp = specia_char_replace(module.borrow().name.clone());
+            let temp = special_char_replace(module.borrow().name.clone(), true);
             module.borrow_mut().name = temp;
         }
         debug!("{:?}", self.modules);
         self.get_items();
         for item in &self.items {
-            let temp = specia_char_replace(item.borrow().name.clone());
+            let temp = special_char_replace(item.borrow().name.clone(), true);
             item.borrow_mut().name = temp;
         }
         debug!("{:?}", self.items);
         self.get_pages();
         for page in &self.pages {
-            let temp = specia_char_replace(page.borrow().name.clone());
+            let temp = special_char_replace(page.borrow().name.clone(), true);
             page.borrow_mut().name = temp;
         }
         debug!("{:?}", self.pages);
@@ -395,14 +403,15 @@ impl Account {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
                 } else {
-                    self.config.local_place.clone()
-                        + "/"
-                        + folder.borrow().course.borrow().term_name.as_str()
+                    self.config
+                        .local_place
+                        .clone()
+                        .join(folder.borrow().course.borrow().term_name.as_str())
                 };
                 debug!("getting files in folder: {:?}", folder);
                 let temp = self
                     .remote_data
-                    .get_file_list_from_folder(Rc::clone(folder), (path).into())
+                    .get_file_list_from_folder(Rc::clone(folder), path)
                     .await;
                 pb.inc(1);
                 debug!("got files in folder: {:?}", folder);
@@ -417,9 +426,10 @@ impl Account {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
                 } else {
-                    self.config.local_place.clone()
-                        + "/"
-                        + assignment.borrow().course.borrow().term_name.as_str()
+                    self.config
+                        .local_place
+                        .clone()
+                        .join(assignment.borrow().course.borrow().term_name.as_str())
                 };
                 let temp = self
                     .remote_data
@@ -437,10 +447,8 @@ impl Account {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
                 } else {
-                    self.config.local_place.clone()
-                        + "/"
-                        + page
-                            .borrow()
+                    self.config.local_place.clone().join(
+                        page.borrow()
                             .item
                             .borrow()
                             .module
@@ -448,11 +456,12 @@ impl Account {
                             .course
                             .borrow()
                             .term_name
-                            .as_str()
+                            .as_str(),
+                    )
                 };
                 let temp = self
                     .remote_data
-                    .get_file_list_from_page(Rc::clone(page), (path).into())
+                    .get_file_list_from_page(Rc::clone(page), path)
                     .await;
                 pb.inc(1);
                 temp
