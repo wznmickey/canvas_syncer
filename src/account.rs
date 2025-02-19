@@ -433,7 +433,7 @@ impl Account {
                 };
                 let temp = self
                     .remote_data
-                    .get_file_list_from_assignment(Rc::clone(assignment), (path).into())
+                    .get_file_list_from_assignment(Rc::clone(assignment), path)
                     .await;
                 pb.inc(1);
                 temp
