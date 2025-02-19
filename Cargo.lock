@@ -190,7 +190,7 @@ checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 
 [[package]]
 name = "canvas_syncer"
-version = "0.6.5"
+version = "0.6.6"
 dependencies = [
  "chrono",
  "clap",
