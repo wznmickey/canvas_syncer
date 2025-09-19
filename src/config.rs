@@ -12,6 +12,7 @@ pub struct Config {
     pub canvas_url: String,
     pub allow_term: bool,
     pub filters: Option<Filters>,
+    pub keep_empty_folder: Option<bool>,
 }
 
 impl Config {
@@ -53,6 +54,7 @@ impl Config {
             canvas_url,
             allow_term: true,
             filters: None,
+            keep_empty_folder: Some(true),
         }
     }
     pub fn save(&self, str: &str) {

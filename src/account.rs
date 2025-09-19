@@ -128,40 +128,121 @@ impl Account {
             let temp = special_char_replace(folder.borrow().name.clone(), true);
             folder.borrow_mut().name = temp;
         }
-        debug!("{:?}", self.folders);
+        info!("{:?}", self.folders);
         self.get_assignments();
         for assignment in &self.assignmnets {
             let temp = special_char_replace(assignment.borrow().name.clone(), true);
             assignment.borrow_mut().name = temp;
         }
-        debug!("{:?}", self.assignmnets);
+        info!("{:?}", self.assignmnets);
         self.get_modules();
         for module in &self.modules {
             let temp = special_char_replace(module.borrow().name.clone(), true);
             module.borrow_mut().name = temp;
         }
-        debug!("{:?}", self.modules);
+        info!("{:?}", self.modules);
         self.get_items();
         for item in &self.items {
             let temp = special_char_replace(item.borrow().name.clone(), true);
             item.borrow_mut().name = temp;
         }
-        debug!("{:?}", self.items);
+        info!("{:?}", self.items);
         self.get_pages();
         for page in &self.pages {
             let temp = special_char_replace(page.borrow().name.clone(), true);
             page.borrow_mut().name = temp;
         }
-        debug!("{:?}", self.pages);
+        info!("{:?}", self.pages);
         self.create_folders();
         self.create_assignments();
         self.create_pages();
         self.get_files();
-        debug!("{:?}", self.files);
+        info!("{:?}", self.files);
         self.progress_bar.finish();
         self.calculate_files();
         self.download_files();
         self.update_files();
+        if self.config.keep_empty_folder == Some(false) {
+            self.clean_empty_folder();
+            // self.multi_progress_bar
+            //     .add(ProgressBar::new(1))
+            //     .with_message(t!("Clean empty folders"))
+            //     .finish_with_message("Clean empty folders");
+        }
+    }
+
+    fn clean_iter_empty_folder(path: &Path) -> Result<(), std::io::Error> {
+        if path.is_dir() {
+            let entries = fs::read_dir(path).unwrap();
+            let mut is_empty = true;
+            for entry in entries {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if path.is_dir() {
+                    let res = Self::clean_iter_empty_folder(&path);
+                    res?;
+                }
+                if path.is_file() {
+                    is_empty = false;
+                }
+            }
+            if is_empty {
+                debug!("Removing empty folder: {:?}", path);
+                let res = fs::remove_dir(path);
+                match res {
+                    Ok(_) => {
+                        info!("Removed empty folder: {:?}", path);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        debug!("In cleaning: {e}");
+                        return Err(e);
+                    }
+                }
+            }
+            return Ok(());
+        }
+        Ok(())
+    }
+
+    fn clean_empty_folder(&self) {
+        let pb: &ProgressBar = &self
+            .multi_progress_bar
+            .add(ProgressBar::new(1))
+            .with_message(t!("Clean empty folders"));
+        for folder in &self.folders {
+            
+            let folder = folder.borrow();
+            debug!("Cleaning folder: {:?}", folder);
+            let path = if self.config.allow_term {
+                Path::new(&self.config.local_place)
+                    .join(&folder.course.borrow().term_name)
+                    .join(folder.course.borrow().name.clone())
+                    .join(&folder.fullname)
+            } else {
+                Path::new(&self.config.local_place)
+                    .join(folder.course.borrow().name.clone())
+                    .join(&folder.fullname)
+            };
+            debug!("Cleaning folder: {:?}", path);
+            
+
+            if path.is_dir() {
+                debug!("Cleaning folder: {:?}", path);
+                let res = Self::clean_iter_empty_folder(&path);
+                match res {
+                    Ok(_) => {
+                        info!("Removed empty folder: {:?}", path);
+                    }
+                    Err(e) => {
+                        debug!("In cleaning: {e}");
+                    }
+                }
+                debug!("Cleaned folder: {:?}", path);
+            }
+        }
+        pb.inc(1);
+        pb.finish();
     }
     fn get_bar(&self, num: u64, msg: Cow<'_, str>) -> ProgressBar {
         let pb = self
