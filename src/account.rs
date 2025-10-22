@@ -211,7 +211,6 @@ impl Account {
             .add(ProgressBar::new(1))
             .with_message(t!("Clean empty folders"));
         for folder in &self.folders {
-            
             let folder = folder.borrow();
             debug!("Cleaning folder: {:?}", folder);
             let path = if self.config.allow_term {
@@ -225,7 +224,6 @@ impl Account {
                     .join(&folder.fullname)
             };
             debug!("Cleaning folder: {:?}", path);
-            
 
             if path.is_dir() {
                 debug!("Cleaning folder: {:?}", path);
