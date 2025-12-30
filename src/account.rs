@@ -171,7 +171,7 @@ impl Account {
         }
     }
 
-    fn clean_iter_empty_folder(path: &Path) -> Result<(), std::io::Error> {
+    fn clean_iter_empty_folder(path: &Path) -> Result<bool, std::io::Error> {
         if path.is_dir() {
             let entries = fs::read_dir(path).unwrap();
             let mut is_empty = true;
@@ -179,8 +179,10 @@ impl Account {
                 let entry = entry.unwrap();
                 let path = entry.path();
                 if path.is_dir() {
-                    let res = Self::clean_iter_empty_folder(&path);
-                    res?;
+                    let res: Result<bool, std::io::Error> = Self::clean_iter_empty_folder(&path);
+                    if !res.unwrap() {
+                        is_empty = false;
+                    }
                 }
                 if path.is_file() {
                     is_empty = false;
@@ -188,11 +190,11 @@ impl Account {
             }
             if is_empty {
                 debug!("Removing empty folder: {:?}", path);
-                let res = fs::remove_dir(path);
+                let res: Result<(), std::io::Error> = fs::remove_dir(path);
                 match res {
                     Ok(_) => {
                         info!("Removed empty folder: {:?}", path);
-                        return Ok(());
+                        return Ok(true);
                     }
                     Err(e) => {
                         debug!("In cleaning: {e}");
@@ -200,45 +202,33 @@ impl Account {
                     }
                 }
             }
-            return Ok(());
+            return Ok(false);
         }
-        Ok(())
+        Ok(false)
     }
-
+    fn clear_path_if_empty_folder(path: &Path) {
+        if path.is_dir() {
+            debug!("Cleaning folder: {:?}", path);
+            let res = Self::clean_iter_empty_folder(path);
+            match res {
+                Ok(_) => {
+                    info!("Removed empty folder: {:?}", path);
+                }
+                Err(e) => {
+                    debug!("In cleaning: {e}");
+                }
+            }
+            debug!("Cleaned folder: {:?}", path);
+        }
+    }
     fn clean_empty_folder(&self) {
         let pb: &ProgressBar = &self
             .multi_progress_bar
             .add(ProgressBar::new(1))
             .with_message(t!("Clean empty folders"));
-        for folder in &self.folders {
-            let folder = folder.borrow();
-            debug!("Cleaning folder: {:?}", folder);
-            let path = if self.config.allow_term {
-                Path::new(&self.config.local_place)
-                    .join(&folder.course.borrow().term_name)
-                    .join(folder.course.borrow().name.clone())
-                    .join(&folder.fullname)
-            } else {
-                Path::new(&self.config.local_place)
-                    .join(folder.course.borrow().name.clone())
-                    .join(&folder.fullname)
-            };
-            debug!("Cleaning folder: {:?}", path);
 
-            if path.is_dir() {
-                debug!("Cleaning folder: {:?}", path);
-                let res = Self::clean_iter_empty_folder(&path);
-                match res {
-                    Ok(_) => {
-                        info!("Removed empty folder: {:?}", path);
-                    }
-                    Err(e) => {
-                        debug!("In cleaning: {e}");
-                    }
-                }
-                debug!("Cleaned folder: {:?}", path);
-            }
-        }
+        let path = Path::new(&self.config.local_place);
+        Self::clear_path_if_empty_folder(path);
         pb.inc(1);
         pb.finish();
     }
