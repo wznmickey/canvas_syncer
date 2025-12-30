@@ -149,7 +149,7 @@ jobs:
     - uses: ncipollo/release-action@v1.14.0
       if: github.event_name == 'release'
       with:
-        artifacts: "canvas_syncer-${{ matrix.target }}-${{matrix.release}}.*"
+        artifacts: "canvas_syncer-${{ matrix.target }}*"
         allowUpdates: true
         omitNameDuringUpdate: true
         omitBodyDuringUpdate: true
