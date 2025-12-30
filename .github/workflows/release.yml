@@ -142,14 +142,14 @@ jobs:
     - uses: actions/upload-artifact@v4
       if: github.event_name == 'workflow_dispatch'
       with:
-        name: ${{ matrix.target }}-${{matrix.release}}
-        path: ${{ matrix.target }}-${{matrix.release}}.*
+        name: canvas_syncer-${{ matrix.target }}-${{matrix.release}}
+        path: "canvas_syncer-${{ matrix.target }}-${{matrix.release}}.*"
         retention-days: 3
 
     - uses: ncipollo/release-action@v1.14.0
       if: github.event_name == 'release'
       with:
-        artifacts: "${{ matrix.target }}-${{matrix.release}}.*"
+        artifacts: "canvas_syncer-${{ matrix.target }}-${{matrix.release}}.*"
         allowUpdates: true
         omitNameDuringUpdate: true
         omitBodyDuringUpdate: true
