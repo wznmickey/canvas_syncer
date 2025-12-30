@@ -132,13 +132,9 @@ jobs:
         mkdir $directory
         cp README LICENSE config.json.example $directory
         if [ -f target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer.exe ]; then
-          ls target
-          ls $directory
           cp target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer.exe $directory/canvas_syncer-${{matrix.release}}.exe
           7z a -r $directory.zip $directory
         else
-          ls target
-          ls $directory
           cp target/${{ matrix.target }}/${{matrix.release}}/canvas_syncer $directory/canvas_syncer-${{matrix.release}}
           tar cJf $directory.tar.xz $directory
         fi
@@ -147,7 +143,7 @@ jobs:
       if: github.event_name == 'workflow_dispatch'
       with:
         name: ${{ matrix.target }}-${{matrix.release}}
-        path: ${{ matrix.target }}-${{matrix.release}}.*"
+        path: ${{ matrix.target }}-${{matrix.release}}.*
         retention-days: 3
 
     - uses: ncipollo/release-action@v1.14.0
