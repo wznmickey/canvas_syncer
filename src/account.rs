@@ -1,6 +1,6 @@
 use crate::config::*;
 use crate::download::*;
-use crate::filter::object_filter_check;
+use crate::filter::{file_filter_check, object_filter_check, DeniedFileInfo};
 use crate::structs::*;
 use crate::ARGS;
 use futures::future::join_all;
@@ -53,9 +53,8 @@ fn special_char_replace(mut st: String, allow_separate: bool) -> String {
     }
 }
 impl Account {
-    pub fn new(c: Config) -> Self {
-        let config: Config = c;
-        config.print();
+    pub async fn new(c: Config) -> Self {
+        let config: Config = c.clone();
         let m = MultiProgress::new();
         let pb = m.add(ProgressBar::new(9));
         pb.set_style(
@@ -68,7 +67,8 @@ impl Account {
 
         info!("Get courses list");
 
-        let mut course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list();
+        let mut course: Vec<Rc<RefCell<Course>>> = remote_data.get_course_list().await;
+        info!("Got {} courses before filtering", course.len());
 
         if let Some(z) = &config
             .filters
@@ -88,12 +88,14 @@ impl Account {
             .and_then(|x| x.course_filter.as_ref())
             .and_then(|y| y.object_filter.as_ref())
         {
+            info!("Applying course filter");
             course = course
                 .iter()
                 .filter(|x| object_filter_check(z, x.borrow().id, &x.borrow().name))
                 .map(Rc::clone)
                 .collect();
         }
+        info!("Got {} courses after filtering", course.len());
         course.iter().for_each(|x| {
             let temp = special_char_replace(x.borrow().term_name.clone(), false);
             x.borrow_mut().term_name = temp;
@@ -120,8 +122,8 @@ impl Account {
         }
     }
 
-    pub fn run(&mut self) {
-        self.get_folders();
+    pub async fn run(&mut self) {
+        self.get_folders().await;
         for folder in &self.folders {
             let temp = special_char_replace(folder.borrow().fullname.clone(), true);
             folder.borrow_mut().fullname = temp;
@@ -129,25 +131,25 @@ impl Account {
             folder.borrow_mut().name = temp;
         }
         info!("{:?}", self.folders);
-        self.get_assignments();
+        self.get_assignments().await;
         for assignment in &self.assignmnets {
             let temp = special_char_replace(assignment.borrow().name.clone(), true);
             assignment.borrow_mut().name = temp;
         }
         info!("{:?}", self.assignmnets);
-        self.get_modules();
+        self.get_modules().await;
         for module in &self.modules {
             let temp = special_char_replace(module.borrow().name.clone(), true);
             module.borrow_mut().name = temp;
         }
         info!("{:?}", self.modules);
-        self.get_items();
+        self.get_items().await;
         for item in &self.items {
             let temp = special_char_replace(item.borrow().name.clone(), true);
             item.borrow_mut().name = temp;
         }
         info!("{:?}", self.items);
-        self.get_pages();
+        self.get_pages().await;
         for page in &self.pages {
             let temp = special_char_replace(page.borrow().name.clone(), true);
             page.borrow_mut().name = temp;
@@ -156,12 +158,12 @@ impl Account {
         self.create_folders();
         self.create_assignments();
         self.create_pages();
-        self.get_files();
+        self.get_files().await;
         info!("{:?}", self.files);
         self.progress_bar.finish();
         self.calculate_files();
-        self.download_files();
-        self.update_files();
+        self.download_files().await;
+        self.update_files().await;
         if self.config.keep_empty_folder == Some(false) {
             self.clean_empty_folder();
             // self.multi_progress_bar
@@ -245,10 +247,11 @@ impl Account {
         );
         pb
     }
-    fn get_assignments(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.assignmnets = rt.block_on(self.get_assignments_helper());
+    async fn get_assignments(&mut self) {
+
+        self.assignmnets = self.get_assignments_helper().await;
         self.progress_bar.inc(1);
+
     }
     async fn get_assignments_helper(&self) -> Vec<Rc<RefCell<Assignment>>> {
         let pb = &self.get_bar(self.course.len() as u64, t!("Get assignments list"));
@@ -268,10 +271,11 @@ impl Account {
         result
     }
 
-    fn get_modules(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.modules = rt.block_on(self.get_modules_helper());
+    async fn get_modules(&mut self) {
+
+        self.modules = self.get_modules_helper().await;
         self.progress_bar.inc(1);
+
     }
 
     async fn get_modules_helper(&self) -> Vec<Rc<RefCell<Module>>> {
@@ -289,10 +293,11 @@ impl Account {
         result
     }
 
-    fn get_items(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.items = rt.block_on(self.get_items_helper());
+    async fn get_items(&mut self) {
+
+        self.items = self.get_items_helper().await;
         self.progress_bar.inc(1);
+
     }
 
     async fn get_items_helper(&self) -> Vec<Rc<RefCell<Item>>> {
@@ -310,10 +315,11 @@ impl Account {
         result
     }
 
-    fn get_pages(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.pages = rt.block_on(self.get_pages_helper());
+    async fn get_pages(&mut self) {
+
+        self.pages = self.get_pages_helper().await;
         self.progress_bar.inc(1);
+
     }
 
     async fn get_pages_helper(&self) -> Vec<Rc<RefCell<Page>>> {
@@ -330,10 +336,11 @@ impl Account {
         pb.finish();
         result
     }
-    fn get_folders(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.folders = rt.block_on(self.get_folders_helper());
+    async fn get_folders(&mut self) {
+
+        self.folders = self.get_folders_helper().await;
         self.progress_bar.inc(1);
+
     }
 
     async fn get_folders_helper(&self) -> Vec<Rc<RefCell<Folder>>> {
@@ -456,10 +463,11 @@ impl Account {
         pb.finish();
         self.progress_bar.inc(1);
     }
-    fn get_files(&mut self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.files = rt.block_on(self.get_files_helper());
+    async fn get_files(&mut self) {
+
+        self.files = self.get_files_helper().await;
         self.progress_bar.inc(1);
+
     }
 
     async fn get_files_helper(&self) -> Vec<Rc<RefCell<CourseFile>>> {
@@ -467,7 +475,8 @@ impl Account {
             self.folders.len() as u64 + self.assignmnets.len() as u64 + self.pages.len() as u64,
             t!("Get files list"),
         );
-        let mut result_a: Vec<Rc<RefCell<CourseFile>>> =
+        let mut denied_files: Vec<DeniedFileInfo> = Vec::new();
+        let result_a: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.folders.iter().map(|folder| async move {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
@@ -490,7 +499,24 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
-        let mut result_b: Vec<Rc<RefCell<CourseFile>>> =
+
+        let file_filter_option = &self.config.filters.as_ref().and_then(|f| f.file_filter.as_ref());
+
+        let mut filtered_result_a = Vec::new();
+        for file in result_a {
+            if let Some(file_filter) = file_filter_option {
+                let file_name_str = file.borrow().filename.clone();
+                let file_extension = file_name_str.split('.').last().unwrap_or("");
+                if file_filter_check(file_filter, file.borrow().size, file_extension, &file.borrow().content_type, &file_name_str, &mut denied_files) {
+                    filtered_result_a.push(file);
+                }
+            } else {
+                filtered_result_a.push(file);
+            }
+        }
+        // result_a = filtered_result_a; // This line is not needed as filtered_result_a will be used directly
+
+        let result_b: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.assignmnets.iter().map(|assignment| async move {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
@@ -511,7 +537,22 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
-        let mut result_c: Vec<Rc<RefCell<CourseFile>>> =
+        
+        let mut filtered_result_b = Vec::new();
+        for file in result_b {
+            if let Some(file_filter) = file_filter_option {
+                let file_name_str = file.borrow().filename.clone();
+                let file_extension = file_name_str.split('.').last().unwrap_or("");
+                if file_filter_check(file_filter, file.borrow().size, file_extension, &file.borrow().content_type, &file_name_str, &mut denied_files) {
+                    filtered_result_b.push(file);
+                }
+            } else {
+                filtered_result_b.push(file);
+            }
+        }
+        // result_b = filtered_result_b; // This line is not needed
+
+        let result_c: Vec<Rc<RefCell<CourseFile>>> =
             join_all(self.pages.iter().map(|page| async move {
                 let path = if !self.config.allow_term {
                     self.config.local_place.clone()
@@ -539,10 +580,36 @@ impl Account {
             .into_iter()
             .flatten()
             .collect();
+        
+        let mut filtered_result_c = Vec::new();
+        for file in result_c {
+            if let Some(file_filter) = file_filter_option {
+                let file_name_str = file.borrow().filename.clone();
+                let file_extension = file_name_str.split('.').last().unwrap_or("");
+                if file_filter_check(file_filter, file.borrow().size, file_extension, &file.borrow().content_type, &file_name_str, &mut denied_files) {
+                    filtered_result_c.push(file);
+                }
+            } else {
+                filtered_result_c.push(file);
+            }
+        }
+        // result_c = filtered_result_c; // This line is not needed
+
+        let mut all_files = Vec::new();
+        all_files.append(&mut filtered_result_a);
+        all_files.append(&mut filtered_result_b);
+        all_files.append(&mut filtered_result_c);
+
+        if !denied_files.is_empty() {
+            info!("以下文件被过滤掉：");
+            for file_info in denied_files {
+                info!("文件名: {}, 大小: {}, 类型: {}, 扩展名: {}, MIME类型: {}, 原因: {}",
+                    file_info.name, file_info.size, file_info.file_type, file_info.extension, file_info.mime_type, file_info.reason);
+            }
+        }
+
         pb.finish();
-        result_a.append(result_b.as_mut());
-        result_a.append(result_c.as_mut());
-        result_a
+        all_files
     }
     fn calculate_files(&mut self) {
         for file in &self.files {
@@ -560,9 +627,8 @@ impl Account {
             }
         }
     }
-    fn download_files(&self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(self.download_files_helper());
+    async fn download_files(&self) {
+        self.download_files_helper().await;
     }
     async fn download_files_helper(&self) {
         if self.need_download_files.is_empty() {
@@ -603,9 +669,8 @@ impl Account {
             info!("Do not download");
         }
     }
-    fn update_files(&self) {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(self.update_files_helper())
+    async fn update_files(&self) {
+        self.update_files_helper().await
     }
     async fn update_files_helper(&self) {
         if self.need_update_files.is_empty() {

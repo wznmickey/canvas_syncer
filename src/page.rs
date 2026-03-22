@@ -5,7 +5,6 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct Page {
     pub name: String,
     pub item: Rc<RefCell<Item>>,

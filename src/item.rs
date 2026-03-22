@@ -4,7 +4,6 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct Item {
     pub id: i64,
     pub name: String,

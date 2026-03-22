@@ -3,15 +3,13 @@ use crate::util::*;
 use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
-
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct Assignment {
     pub id: i64,
     pub name: String,
     pub course: Rc<RefCell<Course>>,
     pub filelink: Vec<String>,
-}
+}               
 impl GetFromJson<Assignment, Rc<RefCell<Course>>, i32> for Assignment {
     fn get_from_json(x: &Value, c: Rc<RefCell<Course>>, _: i32) -> Option<Assignment> {
         if x["locked_for_user"].as_bool()? {

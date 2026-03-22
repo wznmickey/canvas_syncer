@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::*;
 use std::io::*;
 use std::path::PathBuf;
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 
 pub struct Config {
     pub key: String,
@@ -16,6 +16,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub fn print(&self) {
         info!(
             "local_place={:?},canvas_url={:?},{:?}",

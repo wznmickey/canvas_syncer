@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
+use crate::util::{parse_size_rule, SizeAction, SizeOperator};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Filter<T> {
     pub denies: Option<Vec<T>>,
     pub allows: Option<Vec<T>>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ObjectFilter {
     // default could be `allow` or `deny`.
     // If no default, `allow` will be used.
@@ -18,26 +19,292 @@ pub struct ObjectFilter {
     pub id: Option<Filter<i64>>,
     pub default: Option<String>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileFilter {
-    pub size_greater: Option<u64>,
-    pub size_smaller: Option<u64>,
     pub type_filter: Option<Filter<String>>,
+    pub extension_filter: Option<Filter<String>>,
+    pub mime_type_filter: Option<Filter<String>>,
+    pub size_rules: Option<Vec<String>>,
     pub default: Option<String>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Debug, Clone)]
+pub struct DeniedFileInfo {
+    pub name: String,
+    pub size: u64,
+    pub reason: String,
+    pub file_type: String,
+    pub extension: String,
+    pub mime_type: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CourseFilter {
     pub object_filter: Option<ObjectFilter>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TermFilter {
     pub object_filter: Option<ObjectFilter>,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Filters {
     pub course_filter: Option<CourseFilter>,
     pub term_filter: Option<TermFilter>,
     pub file_filter: Option<FileFilter>,
+}
+
+pub fn get_file_type(extension: &str) -> String {
+    match extension.to_lowercase().as_str() {
+        "jpg" | "jpeg" | "png" | "gif" | "bmp" | "webp" | "svg" | "ico" => "image".to_string(),
+        "mp4" | "mov" | "avi" | "mkv" | "webm" | "flv" | "wmv" => "video".to_string(),
+        "mp3" | "wav" | "ogg" | "flac" | "aac" => "audio".to_string(),
+        "pdf" | "doc" | "docx" | "ppt" | "pptx" | "xls" | "xlsx" | "txt" | "md" => {
+            "document".to_string()
+        }
+        "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" => "archive".to_string(),
+        _ => "other".to_string(),
+    }
+}
+
+// true -> Allow
+// false -> Deny
+pub fn file_filter_check(f: &FileFilter, file_size: u64, file_extension: &str, file_mime_type: &str, file_name: &str, denied_files: &mut Vec<DeniedFileInfo>) -> bool {
+    let mut default_setting = "allow";
+    if let Some(ref x) = f.default {
+        default_setting = x
+    }
+
+    let file_type = get_file_type(file_extension);
+
+    // Check size rules
+    if let Some(size_rules) = &f.size_rules {
+        for rule_str in size_rules {
+            if let Some(parsed_rule) = parse_size_rule(rule_str) {
+                let matches = match parsed_rule.operator {
+                    SizeOperator::GreaterThanOrEqual => file_size >= parsed_rule.size_bytes,
+                    SizeOperator::LessThanOrEqual => file_size <= parsed_rule.size_bytes,
+                    SizeOperator::GreaterThan => file_size > parsed_rule.size_bytes,
+                    SizeOperator::LessThan => file_size < parsed_rule.size_bytes,
+                };
+
+                if matches {
+                    match parsed_rule.action {
+                        SizeAction::Deny => {
+                            info!("Denied by size_rules: File {} ({} bytes) matches DENY rule '{}'", file_name, file_size, rule_str);
+                            denied_files.push(DeniedFileInfo {
+                                name: file_name.to_string(),
+                                size: file_size,
+                                reason: format!("Size rule: {} ", rule_str),
+                                file_type: file_type.to_string(),
+                                extension: file_extension.to_string(),
+                                mime_type: file_mime_type.to_string(),
+                            });
+                            return false;
+                        },
+                        SizeAction::Allow => {
+                            // If an allow rule matches, we don't immediately return true,
+                            // as a deny rule later might override it,
+                            // or other filters might still deny.
+                            // For now, we just acknowledge it matched an allow rule
+                            // and continue checking other rules/filters.
+                        }
+                    }
+                } else {
+                    // If a deny rule is not matched, it does not mean allow
+                    // If an allow rule is not matched, it does not mean deny
+                }
+            } else {
+                info!("Warning: Invalid size rule format '{}' in config.json", rule_str);
+            }
+        }
+    }
+
+    // Check type filters
+    if let Some(ref type_filter) = f.type_filter {
+        if let Some(denies) = &type_filter.denies {
+            if denies.contains(&file_type) {
+                info!("Denied by type_filter (denies): File {} ({} bytes) type {} is denied", file_name, file_size, file_type);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("Type filter (denies): Type {} is denied", file_type),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+        if let Some(allows) = &type_filter.allows {
+            if !allows.contains(&file_type) {
+                info!("Denied by type_filter (allows): File {} ({} bytes) type {} is not allowed", file_name, file_size, file_type);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("Type filter (allows): Type {} is not allowed", file_type),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+    }
+
+    // Check extension filters
+    if let Some(ref extension_filter) = f.extension_filter {
+        if let Some(denies) = &extension_filter.denies {
+            if denies.contains(&file_extension.to_string()) {
+                info!("Denied by extension_filter (denies): File {} ({} bytes) extension {} is denied", file_name, file_size, file_extension);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("Extension filter (denies): Extension {} is denied", file_extension),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+        if let Some(allows) = &extension_filter.allows {
+            if !allows.contains(&file_extension.to_string()) {
+                info!("Denied by extension_filter (allows): File {} ({} bytes) extension {} is not allowed", file_name, file_size, file_extension);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("Extension filter (allows): Extension {} is not allowed", file_extension),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+    }
+
+    // Check MIME type filters
+    if let Some(ref mime_type_filter) = f.mime_type_filter {
+        if let Some(denies) = &mime_type_filter.denies {
+            if denies.contains(&file_mime_type.to_string()) {
+                info!("Denied by mime_type_filter (denies): File {} ({} bytes) MIME type {} is denied", file_name, file_size, file_mime_type);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("MIME type filter (denies): MIME type {} is denied", file_mime_type),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+        if let Some(allows) = &mime_type_filter.allows {
+            if !allows.contains(&file_mime_type.to_string()) {
+                info!("Denied by mime_type_filter (allows): File {} ({} bytes) MIME type {} is not allowed", file_name, file_size, file_mime_type);
+                denied_files.push(DeniedFileInfo {
+                    name: file_name.to_string(),
+                    size: file_size,
+                    reason: format!("MIME type filter (allows): MIME type {} is not allowed", file_mime_type),
+                    file_type: file_type.to_string(),
+                    extension: file_extension.to_string(),
+                    mime_type: file_mime_type.to_string(),
+                });
+                return false;
+            }
+        }
+    }
+
+    if default_setting == "deny" {
+        // If default is deny, only explicit allows pass.
+        // We've already handled explicit denies above.
+        // If type_filter or extension_filter or mime_type_filter has allows, then pass.
+        let mut allowed_by_type = false;
+        if let Some(ref type_filter) = f.type_filter {
+            if let Some(allows) = &type_filter.allows {
+                if allows.contains(&file_type) {
+                    allowed_by_type = true;
+                }
+            }
+        }
+
+        let mut allowed_by_extension = false;
+        if let Some(ref extension_filter) = f.extension_filter {
+            if let Some(allows) = &extension_filter.allows {
+                if allows.contains(&file_extension.to_string()) {
+                    allowed_by_extension = true;
+                }
+            }
+        }
+
+        let mut allowed_by_mime_type = false;
+        if let Some(ref mime_type_filter) = f.mime_type_filter {
+            if let Some(allows) = &mime_type_filter.allows {
+                if allows.contains(&file_mime_type.to_string()) {
+                    allowed_by_mime_type = true;
+                }
+            }
+        }
+
+        let result = allowed_by_type || allowed_by_extension || allowed_by_mime_type;
+        if !result {
+            info!("Denied by default_setting (deny): File {} ({} bytes) did not match any allow rules.", file_name, file_size);
+            denied_files.push(DeniedFileInfo {
+                name: file_name.to_string(),
+                size: file_size,
+                reason: "Default setting (deny): Did not match any allow rules".to_string(),
+                file_type: file_type.to_string(),
+                extension: file_extension.to_string(),
+                mime_type: file_mime_type.to_string(),
+            });
+        }
+        return result;
+
+    } else { // default_setting == "allow"
+        // If default is allow, only explicit denies fail.
+        // We've already handled explicit denies above.
+        // If any allows were specified for type or extension or mime_type, and the file doesn't match those allows, then it fails.
+        // If no allows were specified for a filter, that filter implicitly allows.
+
+        let mut type_filter_has_allows = false;
+        if let Some(ref type_filter) = f.type_filter {
+            if type_filter.allows.is_some() {
+                type_filter_has_allows = true;
+            }
+        }
+        if type_filter_has_allows && !f.type_filter.as_ref().unwrap().allows.as_ref().unwrap().contains(&file_type) {
+            return false;
+        }
+
+        let mut extension_filter_has_allows = false;
+        if let Some(ref extension_filter) = f.extension_filter {
+            if extension_filter.allows.is_some() {
+                extension_filter_has_allows = true;
+            }
+        }
+        if extension_filter_has_allows && !f.extension_filter.as_ref().unwrap().allows.as_ref().unwrap().contains(&file_extension.to_string()) {
+            return false;
+        }
+
+        let mut mime_type_filter_has_allows = false;
+        if let Some(ref mime_type_filter) = f.mime_type_filter {
+            if mime_type_filter.allows.is_some() {
+                mime_type_filter_has_allows = true;
+            }
+        }
+        let result = !(mime_type_filter_has_allows && !f.mime_type_filter.as_ref().unwrap().allows.as_ref().unwrap().contains(&file_mime_type.to_string()));
+        if !result {
+            info!("Denied by default_setting (allow): File {} ({} bytes) MIME type {} did not match allowed MIME types.", file_name, file_size, file_mime_type);
+            denied_files.push(DeniedFileInfo {
+                name: file_name.to_string(),
+                size: file_size,
+                reason: format!("Default setting (allow): MIME type {} did not match allowed MIME types.", file_mime_type),
+                file_type: file_type.to_string(),
+                extension: file_extension.to_string(),
+                mime_type: file_mime_type.to_string(),
+            });
+        }
+        return result;
+    }
 }
 
 // true -> Allow
