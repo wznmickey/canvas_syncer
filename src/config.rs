@@ -16,7 +16,6 @@ pub struct Config {
 }
 
 impl Config {
-    #[allow(dead_code)]
     pub fn print(&self) {
         info!(
             "local_place={:?},canvas_url={:?},{:?}",

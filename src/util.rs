@@ -54,43 +54,43 @@ pub enum SizeOperator {
 }
 
 pub struct ParsedSizeRule {
-        pub action: SizeAction,
-        pub operator: SizeOperator,
-        pub size_bytes: u64,
+    pub action: SizeAction,
+    pub operator: SizeOperator,
+    pub size_bytes: u64,
+}
+
+pub fn parse_size_rule(rule_str: &str) -> Option<ParsedSizeRule> {
+    let parts: Vec<&str> = rule_str.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return None; // Invalid format
     }
 
-    pub fn parse_size_rule(rule_str: &str) -> Option<ParsedSizeRule> {
-        let parts: Vec<&str> = rule_str.splitn(2, ':').collect();
-        if parts.len() != 2 {
-            return None; // Invalid format
-        }
+    let action_str = parts[0].trim();
+    let rule_part = parts[1].trim();
 
-        let action_str = parts[0].trim();
-        let rule_part = parts[1].trim();
+    let action = match action_str.to_lowercase().as_str() {
+        "allow" => SizeAction::Allow,
+        "deny" => SizeAction::Deny,
+        _ => return None, // Invalid action
+    };
 
-        let action = match action_str.to_lowercase().as_str() {
-            "allow" => SizeAction::Allow,
-            "deny" => SizeAction::Deny,
-            _ => return None, // Invalid action
-        };
+    let (operator, size_str) = if rule_part.starts_with(">=") {
+        (SizeOperator::GreaterThanOrEqual, rule_part.trim_start_matches(">="))
+    } else if rule_part.starts_with("<=") {
+        (SizeOperator::LessThanOrEqual, rule_part.trim_start_matches("<="))
+    } else if rule_part.starts_with(">") {
+        (SizeOperator::GreaterThan, rule_part.trim_start_matches(">"))
+    } else if rule_part.starts_with("<") {
+        (SizeOperator::LessThan, rule_part.trim_start_matches("<"))
+    } else {
+        return None; // Invalid operator
+    };
 
-        let (operator, size_str) = if rule_part.starts_with(">=") {
-            (SizeOperator::GreaterThanOrEqual, rule_part.trim_start_matches(">="))
-        } else if rule_part.starts_with("<=") {
-            (SizeOperator::LessThanOrEqual, rule_part.trim_start_matches("<="))
-        } else if rule_part.starts_with(">") {
-            (SizeOperator::GreaterThan, rule_part.trim_start_matches(">"))
-        } else if rule_part.starts_with("<") {
-            (SizeOperator::LessThan, rule_part.trim_start_matches("<"))
-        } else {
-            return None; // Invalid operator
-        };
+    let size_bytes = parse_size_string(size_str)?;
 
-        let size_bytes = parse_size_string(size_str)?;
-
-        Some(ParsedSizeRule {
-            action,
-            operator,
-            size_bytes,
-        })
-    }
+    Some(ParsedSizeRule {
+        action,
+        operator,
+        size_bytes,
+    })
+}

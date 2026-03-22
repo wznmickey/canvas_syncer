@@ -65,35 +65,34 @@ fn init_config() {
     config.save("config.json");
 }
 static ARGS: OnceLock<Args> = OnceLock::new();
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     ARGS.get_or_init(Args::parse);
+    // env_logger::Builder::new()
+    // .filter_level(ARGS.get().unwrap().verbose.log_level_filter())
+    //     .init();
     setup_logger().unwrap();
     rust_i18n::set_locale(
         get_locale()
             .unwrap_or_else(|| String::from("en-US"))
             .as_str(),
     );
-    info!("We have {:?} ", rust_i18n::available_locales!());
+    info!("We have {:?}", rust_i18n::available_locales!());
     info!("Now we use {}", &*rust_i18n::locale());
-
     let c: Vec<Config>;
-    if let Some(config_path) = ARGS.get().unwrap().config.as_deref() {
-        trace!("Read config file: {}", config_path);
-        c = config::Config::read_file(config_path);
+    if let Some(config) = ARGS.get().unwrap().config.as_deref() {
+        trace!("Read config file: {}", config);
+        c = config::Config::read_file(config);
     } else if fs::metadata("config.json").is_ok() {
         c = config::Config::read_file("config.json");
     } else {
         init_config();
         c = config::Config::read_file("config.json");
     }
-
     let mut acc_v: Vec<Account> = Vec::new();
     for config in c {
-        acc_v.push(Account::new(config).await);
+        acc_v.push(Account::new(config));
     }
     for mut x in acc_v {
-        x.run().await;
+        x.run();
     }
-    Ok(())
 }

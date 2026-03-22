@@ -36,7 +36,6 @@ impl RemoteData {
         }
     }
     async fn get_remote_resource(&self, url: &str) -> Vec<Response> {
-        info!("get_remote_resource called with URL: {}", url);
         let mut page_num = 1;
         let mut ans = Vec::new();
         let mut retry = 0;
@@ -44,11 +43,9 @@ impl RemoteData {
             let response: Response;
             // permit is necessary. Otherwise, the program will be blocked by the rate limit.
             let _permit = self.sem.acquire_many(50).await.unwrap();
-            let full_url = url.to_string() + "&page=" + page_num.to_string().as_str();
-            info!("Requesting: {}", full_url);
             let temp = self
                 .async_client
-                .get(&full_url)
+                .get(url.to_string() + "&page=" + page_num.to_string().as_str())
                 .send();
             match temp.await {
                 Err(e) => {
@@ -76,34 +73,32 @@ impl RemoteData {
                     response = body;
                 }
             }
-            if let Some(rate_limit) = response.headers().get("x-rate-limit-remaining") {
-                if let Ok(rate_str) = rate_limit.to_str() {
-                    if let Ok(temp) = rate_str.parse::<f64>() {
-                        if temp < 0.0 {
-                            info!("In getting {} : rate limit exceeded wait 10s", url);
-                            sleep(Duration::from_millis(1000 * 10)).await;
-                            continue;
-                        }
-                    }
-                }
+            let temp: f64 = response
+                .headers()
+                .get("x-rate-limit-remaining")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            if temp < 0.0 {
+                info!("In getting {} : rate limit exceeded wait 10s", url);
+
+                sleep(Duration::from_millis(1000 * 10)).await;
+                continue;
             }
 
-            let status = response.status();
-            info!("Response status: {} for URL: {}", status, full_url);
-            if status == reqwest::StatusCode::UNAUTHORIZED {
-                warn!("401 Unauthorized in {}", url);
+            if response.headers().get("status").unwrap().to_str().unwrap() == "401 Unauthorized" {
                 return ans;
             }
-            if status == reqwest::StatusCode::FORBIDDEN {
-                warn!("403 Forbidden in {}", url);
+            if response.headers().get("status").unwrap().to_str().unwrap() == "403 Forbidden" {
                 return ans;
             }
-            if status == reqwest::StatusCode::NOT_FOUND {
-                warn!("404 Not Found in {}", url);
+            if response.headers().get("status").unwrap().to_str().unwrap() == "404 Not Found" {
                 return ans;
             }
-            if !status.is_success() {
-                info!("Status {:?} in {:?}", status, url);
+            if response.headers().get("status").unwrap().to_str().unwrap() != "200 OK" {
+                info!("{:?} in {:?}", response.headers(), url);
                 sleep(Duration::from_millis(1000)).await;
                 continue;
             }
@@ -128,19 +123,11 @@ impl RemoteData {
         a: A,
         b: B,
     ) -> Vec<Rc<RefCell<T>>> {
-        info!("get_remote_json_list called for: {}", st);
         let mut ans = Vec::new();
         let responses = self.get_remote_resource(st);
-        let responses_vec = responses.await;
-        info!("Got {} responses", responses_vec.len());
-        for response in responses_vec {
-            let raw_text = response.text().await.unwrap_or_default();
-            info!("Raw response text (first 500 chars): {}", &raw_text[..raw_text.len().min(500)]);
-            let result: Value = match serde_json::from_str(&raw_text).ok() {
-                None => {
-                    warn!("Failed to parse JSON from response");
-                    continue;
-                }
+        for response in responses.await {
+            let result: Value = match response.json().await.ok() {
+                None => continue,
                 Some(temp) => temp,
             };
             match result.as_array() {
@@ -170,8 +157,9 @@ impl RemoteData {
         }
         ans
     }
-    pub async fn get_course_list(&self) -> Vec<Rc<RefCell<Course>>> {
-        self.get_course_list_helper().await
+    pub fn get_course_list(&self) -> Vec<Rc<RefCell<Course>>> {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(self.get_course_list_helper())
     }
     async fn get_course_list_helper(&self) -> Vec<Rc<RefCell<Course>>> {
         let url = format!("{}/api/v1/courses?include[]=term", self.url);
