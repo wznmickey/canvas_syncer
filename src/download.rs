@@ -28,6 +28,7 @@ impl RemoteData {
             url: url.to_string(),
             async_client: reqwest::ClientBuilder::new()
                 .default_headers(header)
+                .user_agent("canvas_syncer/0.1 ".to_string() + url)
                 .build()
                 .unwrap(),
             // according to https://community.canvaslms.com/t5/Canvas-Developers-Group/API-Rate-Limiting/ba-p/255845 , it should be 700. But my test gives me 600. Maybe my canvas has a different setting.
