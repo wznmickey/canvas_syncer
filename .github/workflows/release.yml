@@ -100,7 +100,7 @@ jobs:
           release: "release"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: dtolnay/rust-toolchain@stable
       with:
         target: ${{ matrix.target }}
@@ -139,14 +139,14 @@ jobs:
           tar cJf $directory.tar.xz $directory
         fi
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       if: github.event_name == 'workflow_dispatch'
       with:
         name: canvas_syncer-${{ matrix.target }}-${{matrix.release}}
         path: "canvas_syncer-${{ matrix.target }}.*"
         retention-days: 3
 
-    - uses: ncipollo/release-action@v1.14.0
+    - uses: ncipollo/release-action@v1
       if: github.event_name == 'release'
       with:
         artifacts: "canvas_syncer-${{ matrix.target }}.*"
